@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "description": "Advisory action classification only; never substitutes host authorization.",
+  "actions": {
+    "observe": "allow",
+    "verify_local": "ask",
+    "network_read": "ask",
+    "modify_local": "ask",
+    "external_write": "ask",
+    "destructive": "deny"
+  },
+  "forbidden_commands": [
+    "git reset --hard",
+    "git clean -fd",
+    "git push --force",
+    "git push -f",
+    "rm -rf",
+    "curl | sh",
+    "wget | sh",
+    "git push --force-with-lease",
+    "git filter-repo",
+    "git filter-branch",
+    "git rebase -i",
+    "terraform destroy",
+    "kubectl delete",
+    "rm -r -f",
+    "rm -f -r"
+  ],
+  "high_risk_tools": [
+    "pip install",
+    "npm install",
+    "npm ci",
+    "pnpm install",
+    "yarn install",
+    "npx",
+    "bash",
+    "sh",
+    "docker",
+    "terraform",
+    "kubectl"
+  ],
+  "max_actions": 100,
+  "allowed_observe_commands": [
+    "git status",
+    "git status --short",
+    "git rev-parse HEAD",
+    "git diff --no-ext-diff",
+    "git diff --no-ext-diff --stat"
+  ]
+}

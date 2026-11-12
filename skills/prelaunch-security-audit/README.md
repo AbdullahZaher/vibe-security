@@ -4,6 +4,14 @@ An English, vendor-neutral Agent Skill for an authorized owner's **27-point**
 prelaunch web application security review, minimally invasive fixes, approval-
 gated remediation, and evidence-based testing/reporting.
 
+## 0.3.0 execution governance
+
+Actions are classified into six side-effect classes using
+`references/execution-policy.md`. The optional `scripts/plan_guard.py`
+classifies structured plans but does not execute them or authorize tools.
+Consult `references/evidence-model.md` for source/build/runtime/deployment
+evidence, and `references/standards-map.md` for OWASP/SSDF/SLSA context.
+
 ## What it does (and does not)
 
 - Follows the 27 controls in `references/security-controls.md` sequentially.

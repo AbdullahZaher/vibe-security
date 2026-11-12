@@ -30,6 +30,7 @@ CONTROLS = [
 STATUS = {"pass", "fixed_verified", "failed", "needs_approval", "not_applicable", "not_verified"}
 SEVERITY = {"critical", "high", "medium", "low", "informational", "none"}
 TEST_RESULT = {"pass", "fail", "blocked", "not_run"}
+EVIDENCE_TIER = {"source", "build", "runtime", "deployment", "unspecified"}
 SECRET_PATTERNS = [
     re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----.*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", re.S),
     re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b"),
@@ -50,7 +51,7 @@ def sanitized(value: Any) -> str:
     return text.strip() or "—"
 
 
-def _validate_control(row: Any, index: int) -> dict[str, Any]:
+def _validate_control(row: Any, index: int, revision: str = "not provided") -> dict[str, Any]:
     if not isinstance(row, dict):
         raise ValueError(f"control #{index} must be an object")
     result = dict(row)
@@ -65,19 +66,24 @@ def _validate_control(row: Any, index: int) -> dict[str, Any]:
         result.setdefault(field, default)
         if result[field] not in valid:
             raise ValueError(f"invalid {field} on control {expected_id}: {result[field]!r}")
+    result.setdefault("evidence_tier", "unspecified")
+    if result["evidence_tier"] not in EVIDENCE_TIER:
+        raise ValueError(f"invalid evidence_tier on control {expected_id}")
     if result["status"] == "not_applicable" and not (
         result.get("evidence") or result.get("fix")
     ):
         result["status"] = "not_verified"
         result["owner_action"] = "Non-applicability was not justified; record architecture-specific evidence."
     if result["status"] in {"pass", "fixed_verified"}:
+        current_revision = revision not in {"", "not provided", "unspecified", None}
+        wrong_revision = current_revision and result.get("evidence_revision") != revision
         if (result["test_result"] != "pass" or not result.get("test_method")
-                or not result.get("evidence")):
+                or not result.get("evidence") or wrong_revision):
             result["status"] = "not_verified"
             result["test_result"] = "not_run"
             result["owner_action"] = (
                 "Original claimed pass lacked a passing test, test method, "
-                "or evidence; verify before approval."
+                "or evidence on the evaluated revision; verify before approval."
             )
     return result
 
@@ -88,10 +94,11 @@ def render(data: dict[str, Any]) -> str:
     provided = data["controls"]
     if len(provided) != 27:
         raise ValueError("provide exactly 27 controls in order, including unverified ones")
-    rows = [_validate_control(row, i) for i, row in enumerate(provided, 1)]
     scope = data.get("scope", {})
     if not isinstance(scope, dict):
         raise ValueError("scope must be an object")
+    rows = [_validate_control(row, i, scope.get("revision", "not provided"))
+            for i, row in enumerate(provided, 1)]
     recommendation = data.get("launch_recommendation", "conditional launch")
     if recommendation not in {"block launch", "conditional launch", "no blockers found in tested scope"}:
         raise ValueError("invalid launch_recommendation")
@@ -125,12 +132,14 @@ def render(data: dict[str, Any]) -> str:
         "", "## Launch recommendation", "",
         f"**{sanitized(recommendation).upper()}**", "",
         "## 27-point control matrix", "",
-        "| ID | Control | Status | Severity | Evidence | Fix | Test | Owner action |",
-        "|---|---|---|---|---|---|---|---|",
+        "| ID | Control | Status | Severity | Evidence | Provenance | Fix | Test | Owner action |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for i, row in enumerate(rows):
         cells = [f"{i+1:02d}", CONTROLS[i], row["status"], row["severity"],
-                 row.get("evidence", "—"), row.get("fix", "—"),
+                 row.get("evidence", "—"),
+                 f"{row['evidence_tier']} @ {row.get('evidence_revision', 'not specified')}",
+                 row.get("fix", "—"),
                  f"{row['test_result']} ({row.get('test_method', 'not provided')})",
                  row.get("owner_action", "—")]
         result.append("| " + " | ".join(sanitized(x) for x in cells) + " |")
@@ -198,7 +207,8 @@ def render(data: dict[str, Any]) -> str:
     if not logs:
         result.append("| — | — | — | No tests recorded | not_run |")
     result += ["", "## Test details / limitations", "",
-               "- A PASS requires actual execution evidence; this renderer does not run tests.",
+               "- A PASS requires actual execution evidence on the evaluated revision; this renderer does not run tests.",
+               "- Evidence provenance values in the input are claims, not authenticated attestations.",
                "- Review redactions, scope and all test evidence before distributing.",
                "- Check untested environments and independent security review needs before launch.", ""]
     return "\n".join(result)

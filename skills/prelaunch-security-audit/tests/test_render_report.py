@@ -70,6 +70,32 @@ class TestReport(unittest.TestCase):
     def test_untrusted_markdown_link_is_escaped(self):
         self.assertNotIn("[click](https://evil.example)", sanitized("[click](https://evil.example)"))
 
+    def test_wrong_revision_evidence_is_not_verified(self):
+        self.data["scope"]["revision"] = "deadbeef"
+        self.data["controls"][0].update({
+            "status": "pass", "test_result": "pass", "evidence": "tests/auth.py",
+            "test_method": "pytest tests/auth.py", "evidence_tier": "build",
+            "evidence_revision": "old-commit"
+        })
+        output = render(self.data)
+        self.assertIn("| 01 | Authentication | not_verified |", output)
+
+    def test_same_revision_evidence_is_accepted_as_claim(self):
+        self.data["scope"]["revision"] = "deadbeef"
+        self.data["controls"][0].update({
+            "status": "pass", "test_result": "pass", "evidence": "tests/auth.py",
+            "test_method": "pytest tests/auth.py", "evidence_tier": "build",
+            "evidence_revision": "deadbeef"
+        })
+        output = render(self.data)
+        self.assertIn("| 01 | Authentication | pass |", output)
+        self.assertIn("build @ deadbeef", output)
+
+    def test_invalid_evidence_tier_rejected(self):
+        self.data["controls"][0]["evidence_tier"] = "magic"
+        with self.assertRaisesRegex(ValueError, "invalid evidence_tier"):
+            render(self.data)
+
     def test_rejects_missing_control(self):
         self.data["controls"].pop()
         with self.assertRaisesRegex(ValueError, "exactly 27"):
