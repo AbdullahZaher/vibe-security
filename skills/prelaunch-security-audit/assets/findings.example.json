@@ -1,0 +1,284 @@
+{
+  "scope": {
+    "project": "EXAMPLE \u2014 replace with your authorized project",
+    "revision": "not provided",
+    "environment": "local development",
+    "limitations": "No review or tests have run. All entries are placeholders."
+  },
+  "launch_recommendation": "block launch",
+  "controls": [
+    {
+      "id": "01",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "02",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "03",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "04",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "05",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "06",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "07",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "08",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "09",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "10",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "11",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "12",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "13",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "14",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "15",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "16",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "17",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "18",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "19",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "20",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "21",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "22",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "23",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "24",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "25",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "26",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    },
+    {
+      "id": "27",
+      "status": "not_verified",
+      "severity": "none",
+      "evidence": "",
+      "fix": "",
+      "test_result": "not_run",
+      "test_method": "",
+      "owner_action": "Review against in-scope project evidence."
+    }
+  ],
+  "findings": [],
+  "changed_files": [],
+  "verification_log": []
+}

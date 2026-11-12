@@ -1,0 +1,27 @@
+name: Verify Agent Skill
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  unit-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: skills/prelaunch-security-audit
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Compile source
+        run: python -m compileall -q scripts mcp_adapter tests
+      - name: Run offline unit and contract tests
+        run: python -m unittest discover -s tests -v
+      - name: Schema and evaluation JSON syntax
+        run: |
+          python -m json.tool assets/findings.example.json > /dev/null
+          python -m json.tool assets/findings.schema.json > /dev/null
+          python -m json.tool ../../evals/cases.json > /dev/null
