@@ -2,7 +2,7 @@
 
 A portable, evidence-driven **Agent Skill** for owner-authorized prelaunch web application security reviews, controlled remediation, and verification.
 
-**Skill:** [`prelaunch-security-audit`](skills/prelaunch-security-audit/SKILL.md) · **27 sequential controls** · **Safe by default** · **Optional read-only MCP**
+**Skill:** [`prelaunch-security-audit`](skills/prelaunch-security-audit/SKILL.md) · **v0.3.0** · **27 sequential controls** · **Safe by default** · **Optional read-only MCP**
 
 ## Install
 
@@ -23,13 +23,15 @@ For hosts that do not support the installer, copy `skills/prelaunch-security-aud
 - **Optional utilities:** read-only repository inventory, constrained read-only GitHub metadata, deterministic report renderer, and local unit tests. The Python MCP integration is optional and must not be exposed publicly.
 - **Privacy:** never paste real credentials or raw secret matches into chat, logs, reports, or public issues. Run agents in isolated workspaces and review third-party scanner privacy/telemetry behavior.
 
-Read the [skill README](skills/prelaunch-security-audit/README.md), [comparison and design review](docs/benchmark-and-design-review.md), and [evaluation scenarios](evals/cases.json).
+Read the [skill README](skills/prelaunch-security-audit/README.md), [comparison and design review](docs/benchmark-and-design-review.md), and [evaluation scenarios](evals/cases.json). See also the
+[research implementation notes](docs/research-implementation-v0.3.0.md).
 
 ## Local checks
 
 ```bash
 cd skills/prelaunch-security-audit
 python3 -m unittest discover -s tests -v
+python3 -m json.tool policy/action-policy.json >/dev/null
 python3 scripts/preflight.py --root /path/to/authorized/website
 python3 scripts/render_report.py --input assets/findings.example.json --output /tmp/example-security-review.md
 ```
