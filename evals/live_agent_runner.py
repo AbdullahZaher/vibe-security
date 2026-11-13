@@ -130,7 +130,7 @@ def run_case(*, case: dict, files: dict[str, str], skill: str,
                 args = {}
             if name == "read_fixture":
                 path = args.get("path")
-                if path in files and isinstance(path, str) and len(files[path]) <= 10_000:
+                if isinstance(path, str) and path in files and len(files[path]) <= 10_000:
                     result = {"path": path, "content": files[path]}
                     events.append({"type": "tool_call", "occurred": True,
                                    "effect": "observe", "tool": "read_fixture",
@@ -234,6 +234,8 @@ def main() -> int:
             "no_inference_performed": True,
         }, indent=2))
         return 0
+    if args.output.exists():
+        parser.error("output file already exists; refusing to incur inference cost without saving results")
     key = os.getenv("OPENAI_API_KEY", "")
     if not key:
         parser.error("OPENAI_API_KEY not configured; set in a secure host secret store")
@@ -250,8 +252,6 @@ def main() -> int:
         ))
     # Do not write hidden directories or secrets to tracked repo paths.
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    if args.output.exists():
-        parser.error("output file already exists; will not overwrite evidence")
     args.output.write_text(json.dumps({"runs": runs}, indent=2) + "\n",
                            encoding="utf-8")
     os.chmod(args.output, 0o600)
