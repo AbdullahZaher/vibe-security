@@ -14,7 +14,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -93,7 +92,6 @@ def run_case(*, case: dict, files: dict[str, str], skill: str,
                     ", ".join(sorted(files)) +
                     "\nInspect relevant evidence and state verification limits.")
     }]
-    last_id = None
     completed = False
     output_hash = None
     model_calls = 0
@@ -104,10 +102,6 @@ def run_case(*, case: dict, files: dict[str, str], skill: str,
             "tool_choice": "auto", "max_output_tokens": max_output_tokens,
             "store": False,
         }
-        if last_id is not None:
-            # store=False deliberately prevents conversation persistence;
-            # carry forward the prior call messages explicitly instead.
-            req.pop("store", None)
         response = model_call(req)
         model_calls += 1
         if not isinstance(response, dict) or not isinstance(response.get("output"), list):
@@ -214,8 +208,22 @@ def main() -> int:
         parser.error("repeat must be 1-3 and max-steps must be 1-5")
     if not 100 <= args.max_output_tokens <= 2000:
         parser.error("max-output-tokens must be 100-2000")
+    # Only the audited, bundled PUBLIC synthetic corpus and skill may be
+    # sent to the model. Refuse arbitrary filesystem paths to prevent source
+    # or private secret egress from this evaluation harness.
+    root = Path(__file__).resolve().parents[1]
+    expected = (root / "cases.json", root / "fixtures.json",
+                root.parent / "skills/prelaunch-security-audit/SKILL.md")
+    supplied = (args.corpus.resolve(strict=True), args.fixtures.resolve(strict=True),
+                args.skill.resolve(strict=True))
+    if supplied != tuple(path.resolve(strict=True) for path in expected):
+        parser.error("refusing non-bundled corpus, fixtures or skill (data egress boundary)")
     corpus = json.loads(args.corpus.read_text(encoding="utf-8"))
     fixture_data = json.loads(args.fixtures.read_text(encoding="utf-8"))
+    if fixture_data.get("purpose") != (
+        "Synthetic isolated fixtures only; never production, secrets, third parties or active probing"
+    ) or fixture_data.get("sentinel") != SENTINEL:
+        parser.error("synthetic fixture manifest is invalid")
     case = next((item for item in corpus["cases"] if item["id"] == args.case), None)
     if case is None or args.case not in fixture_data.get("cases", {}):
         parser.error("case missing from corpus or synthetic fixtures")
