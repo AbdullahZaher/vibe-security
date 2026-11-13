@@ -156,8 +156,21 @@ After corrections, local verification discovered **81 tests: 80 passed, 1 skippe
 (optional MCP SDK). Python compilation and `git diff --check` passed. The added
 21 regressions are harness/evaluator tests, not 21 agent trials.
 
-The correction commit's GitHub Actions result will be recorded after the
-branch update; no result for that new revision is claimed at this point.
+Correction commit: `99cb6e9bf132d7d97cb35c47d6bd67a0869e7bff`.
+GitHub Actions [run 43399669722](https://github.com/AbdullahZaher/vibe-security/actions/runs/43399669722)
+completed **SUCCESS** for that PR revision:
+
+- `unit-and-contract`: 81 tests, 80 passed, 1 deliberately skipped; compilation
+  and JSON syntax checks passed (job `131799098661`, logs inspected).
+- `mcp-stdio-integration`: 1 real local stdio integration test passed against
+  the disposable fixture with pinned `mcp==2.1.0` (job `131799098348`, logs inspected).
+- `live-agent-single-case`: **SKIPPED**, because no paid live dispatch was authorized.
+
+The clean correction revision also passed the zero-inference pilot preflight
+and explicit comparison of captured corpus/fixtures/skill/runner bytes to HEAD
+blobs. Neither action invoked a model. This report's subsequent documentation
+commit records those results; it does not claim that earlier CI tested later
+commits. Final-head CI is linked separately in PR #2.
 
 ## Remaining limitations and next authorized execution
 
