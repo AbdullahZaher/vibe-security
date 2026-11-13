@@ -243,6 +243,8 @@ def main() -> int:
             "no_inference_performed": True,
         }, indent=2))
         return 0
+    if args.output.resolve().is_relative_to(root.parent):
+        parser.error("output must be outside the Git repository")
     if args.output.exists():
         parser.error("output file already exists; refusing to incur inference cost without saving results")
     review_sink = None
@@ -250,8 +252,9 @@ def main() -> int:
         review_path = args.review_dir.resolve()
         if review_path.is_relative_to(root.parent):
             parser.error("review-dir must be outside the Git repository")
-        review_path.mkdir(mode=0o700, parents=True, exist_ok=True)
-        os.chmod(review_path, 0o700)
+        if review_path.exists():
+            parser.error("review-dir must be a new private directory; refusing to change existing permissions")
+        review_path.mkdir(mode=0o700, parents=True, exist_ok=False)
 
         def private_review(run_id: str, text: str) -> None:
             path = review_path / (run_id + ".txt")
@@ -276,9 +279,9 @@ def main() -> int:
         ))
     # Do not write hidden directories or secrets to tracked repo paths.
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps({"runs": runs}, indent=2) + "\n",
-                           encoding="utf-8")
-    os.chmod(args.output, 0o600)
+    output_fd = os.open(args.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(output_fd, "w", encoding="utf-8") as output:
+        output.write(json.dumps({"runs": runs}, indent=2) + "\n")
     print(json.dumps({"runs_recorded": len(runs),
                       "model_calls": sum(r["model_calls"] for r in runs),
                       "output": str(args.output),
