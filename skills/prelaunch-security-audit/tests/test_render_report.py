@@ -124,7 +124,7 @@ class TestReport(unittest.TestCase):
             "evidence": "tests/security.py", "fix": "guard fixed",
         }]
         self.data["verification_log"] = [{
-            "id": "V-1", "revision": "before", "method": "pytest tests/security.py",
+            "id": "V-1", "finding_id": "F-3", "revision": "before", "method": "pytest tests/security.py",
             "environment": "test", "observed": "denied", "result": "pass",
         }]
         self.assertIn("**BLOCK LAUNCH**", render(self.data))
@@ -184,7 +184,8 @@ class TestReport(unittest.TestCase):
             row.update({
                 "status": "pass", "test_result": "pass",
                 "evidence": "tests/fixture.py", "test_method": "pytest",
-                "evidence_revision": "abc123", "verification_ref": f"V-{row['id']}",
+                "evidence_revision": "abc123", "evidence_tier": "build",
+                "verification_ref": f"V-{row['id']}",
             })
             self.data["verification_log"].append({
                 "id": row["verification_ref"], "control_id": row["id"],
@@ -192,10 +193,48 @@ class TestReport(unittest.TestCase):
                 "environment": "disposable", "observed": "pass", "result": "pass",
             })
         self.assertIn("**NO BLOCKERS FOUND IN TESTED SCOPE**", render(self.data))
-        self.data["verification_log"].pop()
+        last = self.data["verification_log"].pop()
         self.assertIn("**CONDITIONAL LAUNCH**", render(self.data))
+        self.data["verification_log"].append(last)
         self.data["verification_log"][-1]["control_id"] = "01"
         self.assertIn("**CONDITIONAL LAUNCH**", render(self.data))
+
+    def test_not_applicable_cannot_hide_failed_test(self):
+        self.data["scope"]["revision"] = "abc123"
+        self.data["controls"][2].update({
+            "status": "not_applicable", "evidence": "docs/schema.md",
+            "not_applicable_reason": "No tenant tables", "test_method": "manual inspection",
+            "evidence_tier": "source", "evidence_revision": "abc123",
+            "test_result": "fail",
+        })
+        self.assertIn("| 03 | Secure database access | not_verified |", render(self.data))
+
+    def test_duplicate_verification_ids_are_rejected(self):
+        self.data["verification_log"] = [
+            {"id": "V-1", "result": "pass"},
+            {"id": "V-1", "result": "pass"},
+        ]
+        with self.assertRaisesRegex(ValueError, "must be unique"):
+            render(self.data)
+
+    def test_high_finding_requires_its_own_matching_proof(self):
+        self.data["scope"]["revision"] = "abc123"
+        self.data["findings"] = [{
+            "id": "F-SEC", "severity": "high", "resolution_status": "fixed_verified",
+            "test_result": "pass", "evidence": "tests/tenant.py", "fix": "RLS fixed",
+            "verification_ref": "V-1",
+        }]
+        self.data["verification_log"] = [{
+            "id": "V-1", "finding_id": "F-OTHER", "revision": "abc123",
+            "method": "pytest", "environment": "isolated",
+            "observed": "pass", "result": "pass",
+        }]
+        report = render(self.data)
+        self.assertIn("**BLOCK LAUNCH**", report)
+        self.assertIn("Resolution: open", report)
+        self.data["verification_log"][0]["finding_id"] = "F-SEC"
+        verified = render(self.data)
+        self.assertIn("Resolution: fixed_verified", verified)
 
     def test_rejects_missing_control(self):
         self.data["controls"].pop()
