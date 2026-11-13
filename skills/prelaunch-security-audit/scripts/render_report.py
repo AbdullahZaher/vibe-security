@@ -70,11 +70,23 @@ def _validate_control(row: Any, index: int, revision: str = "not provided") -> d
     result.setdefault("evidence_tier", "unspecified")
     if result["evidence_tier"] not in EVIDENCE_TIER:
         raise ValueError(f"invalid evidence_tier on control {expected_id}")
-    if result["status"] == "not_applicable" and not (
-        result.get("evidence") or result.get("fix")
-    ):
-        result["status"] = "not_verified"
-        result["owner_action"] = "Non-applicability was not justified; record architecture-specific evidence."
+    if result["status"] == "not_applicable":
+        # A proposed fix is NOT proof that a control is irrelevant.
+        # N/A must cite architecture-specific evidence at the reviewed revision
+        # and a repeatable method (static inspection is allowed).
+        applicable_proof = (
+            revision not in {"", "not provided", "unspecified", None}
+            and result.get("evidence_revision") == revision
+            and result["evidence_tier"] in {"source", "build", "runtime", "deployment"}
+            and all(isinstance(result.get(field), str) and result[field].strip()
+                    for field in ("evidence", "not_applicable_reason", "test_method"))
+        )
+        if not applicable_proof:
+            result["status"] = "not_verified"
+            result["owner_action"] = (
+                "N/A lacked architecture-specific evidence, a non-applicability "
+                "rationale, a method and a matching revision."
+            )
     if result["status"] in {"pass", "fixed_verified"}:
         current_revision = revision not in {"", "not provided", "unspecified", None}
         wrong_revision = not current_revision or result.get("evidence_revision") != revision
@@ -151,16 +163,29 @@ def render(data: dict[str, Any]) -> str:
         and finding["resolution_status"] not in {"fixed_verified", "false_positive_verified"}
         for finding in checked_findings
     )
-    has_matching_pass = (
-        revision not in {"", "not provided", "unspecified", None}
-        and any(log.get("result") == "pass" and log.get("revision") == revision
-                and log.get("method") and log.get("environment")
-                and log.get("observed") for log in logs)
+    # A single successful test cannot clear 27 controls. Every claimed
+    # PASS/fixed_verified must point to its own matching verification record.
+    # This is a consistency check, not independent authentication.
+    passed_controls = [row for row in rows if row["status"] in {"pass", "fixed_verified"}]
+    verified_control_coverage = bool(passed_controls) and all(
+        isinstance(row.get("verification_ref"), str)
+        and bool(row["verification_ref"].strip())
+        and any(
+            log.get("id") == row["verification_ref"]
+            and log.get("control_id") == row["id"]
+            and log.get("revision") == revision
+            and revision not in {"", "not provided", "unspecified", None}
+            and log.get("result") == "pass"
+            and all(isinstance(log.get(field), str) and log[field].strip()
+                    for field in ("method", "environment", "observed"))
+            for log in logs
+        )
+        for row in passed_controls
     )
     if unresolved_high_risk:
         recommendation = "block launch"
     elif recommendation == "no blockers found in tested scope" and (
-        not has_matching_pass
+        not verified_control_coverage
         or any(row["status"] in {"failed", "needs_approval", "not_verified"}
                for row in rows)
     ):
@@ -239,6 +264,8 @@ def render(data: dict[str, Any]) -> str:
                "- A PASS requires actual execution evidence on the evaluated revision; this renderer does not run tests.",
                "- Evidence provenance values in the input are claims, not authenticated attestations.",
                "- High/critical issues are independent launch gates; a PASS alone is never a verified fix.",
+               "- A scoped all-clear requires matching-revision evidence for every applicable PASS control; a single test cannot clear the matrix.",
+               "- N/A requires documented architecture evidence and method at the reviewed revision; a proposed fix is not evidence.",
                "- Review redactions, scope and all test evidence before distributing.",
                "- Check untested environments and independent security review needs before launch.", ""]
     return "\n".join(result)
