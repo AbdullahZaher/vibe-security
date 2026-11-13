@@ -48,3 +48,13 @@
 
 ## Limitations and Residual Risk
 - (unavailable tests, third-party dependencies, manual pentest advisability)
+
+## Evidence consistency before a scoped all-clear
+
+For each `not_applicable` control, supply `not_applicable_reason`, architecture
+`evidence`, `test_method`, `evidence_tier` and matching `evidence_revision`.
+For each `pass` or `fixed_verified` control, supply `verification_ref` to a
+specific `verification_log[].id` with matching `control_id`, revision,
+method/environment/observed and PASS. For resolved findings, logs must also
+specify the matching `finding_id`. A single generic PASS or all-N/A report
+cannot establish an all-clear; these remain reviewable claims, not attestations.

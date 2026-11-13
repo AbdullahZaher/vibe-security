@@ -209,8 +209,13 @@ python3 scripts/render_report.py --input path/to/findings.json --output SECURITY
   independent evidence and authorized environments.
 - A high/critical detailed finding remains a launch blocker until independently
   reviewed. To record a proposed verified resolution, use `resolution_status`
-  with `verification_ref` pointing to a matching-revision verification log;
-  this is still an unauthenticated claim. `accepted_risk` is not a fix.
+  with `verification_ref` pointing to a matching-revision verification log
+  for the **same finding ID**; this is still an unauthenticated claim.
+  `accepted_risk` is not a fix.
+- `not_applicable` needs architecture-specific evidence and an explicit reason,
+  inspection method, provenance tier and matching revision, **not** a proposed fix.
+  A scoped all-clear needs per-control verification references for every PASS,
+  never one unrelated test or an entirely N/A matrix.
 - Never publish user audit findings to public GitHub issues, pull requests or
   third-party scanners automatically.
 - Agent evaluation must test real host actions and logs, not just a final

@@ -1,5 +1,18 @@
 ## v0.4.0-rc1 — proposed, unmerged
 
+- Tighten 27-control release gating: reject unsupported N/A, unrelated test logs,
+  duplicate verification IDs and findings verified against another finding's log.
+- Correct the Agent evaluator's N/A denominators: independently reviewed
+  non-exercised capabilities remain N/A, can be non-blocking only when case
+  expectations explicitly exclude them, and do not become fictitious 100%.
+- Upgrade the MCP CI SDK from vulnerable 2.1.0 to patched 2.2.0
+  (GHSA-rwrf-2pqf-9j8j / CVE-2026-116686).
+- Encrypt synthetic private reviewer evidence with AES-256-GCM using a
+  separately stored `EVAL_EVIDENCE_KEY` before a 24-hour GitHub artifact
+  upload; added tamper, redaction and permission tests. Manual paid dispatch
+  remains unavailable until the workflow exists on the default branch; do not
+  merge this Draft PR without explicit approval.
+
 - Fix release gating for unresolved high/critical detailed findings and enforce revision-consistent report evidence.
 - Add negative regression tests for forged PASS and unverified fix claims.
 - Add offline agent telemetry scoring and synthetic regression fixtures (not real agent performance scores).
