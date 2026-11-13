@@ -69,6 +69,7 @@ jobs:
           python -m json.tool assets/findings.example.json > /dev/null
           python -m json.tool assets/findings.schema.json > /dev/null
           python -m json.tool ../../evals/cases.json > /dev/null
+          python -m json.tool ../../evals/fixtures.json > /dev/null
           python -m json.tool policy/action-policy.json > /dev/null
   mcp-stdio-integration:
     runs-on: ubuntu-latest
