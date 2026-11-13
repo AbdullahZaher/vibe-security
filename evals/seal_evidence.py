@@ -86,7 +86,14 @@ def collect(trace: Path, review_dir: Path) -> dict:
     return {"format": VERSION, "trace": metadata, "reviews": reviews}
 
 
+def _assert_outside_checkout(path: Path) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    if path.resolve().is_relative_to(repo_root):
+        raise ValueError("private evidence output must stay outside the repository")
+
+
 def seal(trace: Path, review_dir: Path, output: Path, key: bytes) -> None:
+    _assert_outside_checkout(output)
     payload = json.dumps(collect(trace, review_dir), sort_keys=True,
                          ensure_ascii=False).encode("utf-8")
     nonce = secrets.token_bytes(12)
@@ -100,6 +107,7 @@ def seal(trace: Path, review_dir: Path, output: Path, key: bytes) -> None:
 
 
 def unseal(encrypted: Path, output_dir: Path, key: bytes) -> None:
+    _assert_outside_checkout(output_dir)
     envelope = json.loads(_validate_private_source(encrypted, 5_000_000))
     if envelope.get("format") != VERSION:
         raise ValueError("unsupported evidence format")
@@ -115,14 +123,17 @@ def unseal(encrypted: Path, output_dir: Path, key: bytes) -> None:
     payload = json.loads(plaintext)
     if payload.get("format") != VERSION:
         raise ValueError("unexpected decrypted format")
+    if not isinstance(payload.get("reviews"), dict) or not isinstance(payload.get("trace"), dict):
+        raise ValueError("invalid decrypted evidence structure")
+    if any(not RUN_ID.fullmatch(run_id) or not isinstance(review, str)
+           for run_id, review in payload["reviews"].items()):
+        raise ValueError("invalid reviewer record")
     if output_dir.exists():
         raise ValueError("review destination must be a new directory")
     output_dir.mkdir(parents=True, mode=0o700)
     _new_private_file(output_dir / "trace.json",
                       json.dumps(payload["trace"], indent=2).encode("utf-8"))
     for run_id, review in payload["reviews"].items():
-        if not RUN_ID.fullmatch(run_id) or not isinstance(review, str):
-            raise ValueError("invalid reviewer record")
         _new_private_file(output_dir / (run_id + ".txt"), review.encode("utf-8"))
 
 
