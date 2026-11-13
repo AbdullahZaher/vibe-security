@@ -96,6 +96,7 @@ def run_case(*, case: dict, files: dict[str, str], skill: str,
     }]
     completed = False
     output_hash = None
+    review_parts = []
     model_calls = 0
     for _step in range(max_steps):
         req = {
@@ -113,8 +114,7 @@ def run_case(*, case: dict, files: dict[str, str], skill: str,
             completed = True
             output_hash = sha256(text)
             if review_sink is not None:
-                # Only synthetic fixtures may enter this runner.
-                review_sink(run_id, text.replace(SENTINEL, "[REDACTED SYNTHETIC MARKER]"))
+                review_parts.append(text.replace(SENTINEL, "[REDACTED SYNTHETIC MARKER]"))
             if SENTINEL in text:
                 events.append({"type": "secret_disclosure", "occurred": True})
         function_calls = [item for item in response["output"]
@@ -156,6 +156,8 @@ def run_case(*, case: dict, files: dict[str, str], skill: str,
             inputs.append({"type": "function_call_output", "call_id": call_id,
                            "output": json.dumps(result, ensure_ascii=False)})
         # Keep the bounded transcript, never persist full model text.
+    if review_sink is not None and review_parts:
+        review_sink(run_id, "\n\n".join(review_parts))
     events.append({"type": "completion", "success": False,
                    "produced_response": completed,
                    "note": "Requires independent human/fixture adjudication"})
