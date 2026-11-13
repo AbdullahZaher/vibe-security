@@ -33,7 +33,11 @@ class TestMCPInterop(unittest.TestCase):
                 async with Client(params) as client:
                     response = await client.call_tool("security_preflight", {})
                     self.assertFalse(response.is_error)
+                    # MCP v2 may return a typed structured payload or
+                    # TextContent blocks depending on the tool wrapper.
                     content = response.structured_content
+                    if content is None:
+                        content = [getattr(item, "text", "") for item in response.content]
                     output = json.dumps(content)
                     self.assertIn(".env.local", output)
                     self.assertNotIn("DO_NOT_PRINT_SENTINEL", output)
