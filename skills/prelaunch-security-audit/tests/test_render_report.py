@@ -147,6 +147,56 @@ class TestReport(unittest.TestCase):
         })
         self.assertIn("| 01 | Authentication | not_verified |", render(self.data))
 
+    def test_fix_text_does_not_justify_not_applicable(self):
+        self.data["scope"]["revision"] = "abc123"
+        self.data["controls"][0].update({
+            "status": "not_applicable", "fix": "delete the login system",
+            "evidence": "", "test_method": "", "not_applicable_reason": "",
+        })
+        output = render(self.data)
+        self.assertIn("| 01 | Authentication | not_verified |", output)
+
+    def test_all_na_does_not_claim_complete_launch_assurance(self):
+        self.data["scope"]["revision"] = "abc123"
+        self.data["launch_recommendation"] = "no blockers found in tested scope"
+        for row in self.data["controls"]:
+            row.update({
+                "status": "not_applicable", "evidence": "architecture/docs.md",
+                "not_applicable_reason": "Feature absent from reviewed architecture",
+                "test_method": "review architecture/docs.md", "evidence_tier": "source",
+                "evidence_revision": "abc123",
+            })
+        # Even a real passing unrelated test does not prove all 27 N/As.
+        self.data["verification_log"] = [{
+            "id": "v", "revision": "abc123", "method": "pytest",
+            "environment": "fixture", "observed": "ok", "result": "pass",
+        }]
+        output = render(self.data)
+        self.assertIn("| 01 | Authentication | not_applicable |", output)
+        self.assertIn("**CONDITIONAL LAUNCH**", output)
+        self.assertNotIn("**NO BLOCKERS FOUND IN TESTED SCOPE**", output)
+
+    def test_scoped_all_clear_requires_per_control_matching_logs(self):
+        self.data["scope"]["revision"] = "abc123"
+        self.data["launch_recommendation"] = "no blockers found in tested scope"
+        self.data["verification_log"] = []
+        for row in self.data["controls"]:
+            row.update({
+                "status": "pass", "test_result": "pass",
+                "evidence": "tests/fixture.py", "test_method": "pytest",
+                "evidence_revision": "abc123", "verification_ref": f"V-{row['id']}",
+            })
+            self.data["verification_log"].append({
+                "id": row["verification_ref"], "control_id": row["id"],
+                "revision": "abc123", "method": "pytest",
+                "environment": "disposable", "observed": "pass", "result": "pass",
+            })
+        self.assertIn("**NO BLOCKERS FOUND IN TESTED SCOPE**", render(self.data))
+        self.data["verification_log"].pop()
+        self.assertIn("**CONDITIONAL LAUNCH**", render(self.data))
+        self.data["verification_log"][-1]["control_id"] = "01"
+        self.assertIn("**CONDITIONAL LAUNCH**", render(self.data))
+
     def test_rejects_missing_control(self):
         self.data["controls"].pop()
         with self.assertRaisesRegex(ValueError, "exactly 27"):
