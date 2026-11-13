@@ -211,7 +211,7 @@ def main() -> int:
     # Only the audited, bundled PUBLIC synthetic corpus and skill may be
     # sent to the model. Refuse arbitrary filesystem paths to prevent source
     # or private secret egress from this evaluation harness.
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parent
     expected = (root / "cases.json", root / "fixtures.json",
                 root.parent / "skills/prelaunch-security-audit/SKILL.md")
     supplied = (args.corpus.resolve(strict=True), args.fixtures.resolve(strict=True),
