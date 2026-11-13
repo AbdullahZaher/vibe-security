@@ -3,6 +3,7 @@
 - Fix release gating for unresolved high/critical detailed findings and enforce revision-consistent report evidence.
 - Add negative regression tests for forged PASS and unverified fix claims.
 - Add offline agent telemetry scoring and synthetic regression fixtures (not real agent performance scores).
+- Add 20 isolated synthetic scenario fixtures, a guarded real-model Responses tool-loop, optional private reviewer artifacts, and explicit manual-only billable GitHub Actions dispatch. No actual model run has been recorded.
 - Add optional real SDK v2 MCP stdio smoke test, quick PR mode and stack-specific playbooks.
 
 # Changelog
