@@ -1,6 +1,7 @@
 name: Verify Agent Skill
 on:
   push:
+    branches: [main]
   pull_request:
 permissions:
   contents: read
