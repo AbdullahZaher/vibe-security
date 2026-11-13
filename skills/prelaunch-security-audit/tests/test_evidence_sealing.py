@@ -88,6 +88,19 @@ class TestEvidenceSealing(unittest.TestCase):
             seal(self.trace, self.review, self.output, KEY)
         self.assertEqual(self.output.read_text(), "existing")
 
+    def test_never_creates_plaintext_review_under_checkout(self):
+        seal(self.trace, self.review, self.output, KEY)
+        forbidden = ROOT / "do-not-write-review"
+        with self.assertRaisesRegex(ValueError, "outside"):
+            unseal(self.output, forbidden, KEY)
+        self.assertFalse(forbidden.exists())
+
+    def test_never_creates_encrypted_artifact_under_checkout(self):
+        forbidden = ROOT / "do-not-write-evidence.enc"
+        with self.assertRaisesRegex(ValueError, "outside"):
+            seal(self.trace, self.review, forbidden, KEY)
+        self.assertFalse(forbidden.exists())
+
     def test_refuses_symlink_review_record(self):
         target = self.review / (self.run_id + ".txt")
         target.unlink()
