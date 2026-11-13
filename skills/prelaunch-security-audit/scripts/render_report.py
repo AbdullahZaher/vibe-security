@@ -78,6 +78,7 @@ def _validate_control(row: Any, index: int, revision: str = "not provided") -> d
             revision not in {"", "not provided", "unspecified", None}
             and result.get("evidence_revision") == revision
             and result["evidence_tier"] in {"source", "build", "runtime", "deployment"}
+            and result["test_result"] not in {"fail", "blocked"}
             and all(isinstance(result.get(field), str) and result[field].strip()
                     for field in ("evidence", "not_applicable_reason", "test_method"))
         )
@@ -124,6 +125,10 @@ def render(data: dict[str, Any]) -> str:
     if any(not isinstance(log, dict) or log.get("result", "not_run") not in TEST_RESULT
            for log in logs):
         raise ValueError("each verification_log row must have a valid result")
+    log_ids = [log["id"] for log in logs
+               if isinstance(log.get("id"), str) and log["id"]]
+    if len(set(log_ids)) != len(log_ids):
+        raise ValueError("verification_log IDs must be unique")
     log_by_id = {log.get("id"): log for log in logs
                  if isinstance(log.get("id"), str) and log.get("id")}
     checked_findings = []
@@ -140,6 +145,7 @@ def render(data: dict[str, Any]) -> str:
                 revision not in {"", "not provided", "unspecified", None}
                 and isinstance(proof, dict)
                 and proof.get("revision") == revision
+                and finding.get("id") and proof.get("finding_id") == finding["id"]
                 and proof.get("result") == "pass"
                 and proof.get("method") and proof.get("environment")
                 and proof.get("observed")
@@ -170,6 +176,7 @@ def render(data: dict[str, Any]) -> str:
     verified_control_coverage = bool(passed_controls) and all(
         isinstance(row.get("verification_ref"), str)
         and bool(row["verification_ref"].strip())
+        and row["evidence_tier"] != "unspecified"
         and any(
             log.get("id") == row["verification_ref"]
             and log.get("control_id") == row["id"]
