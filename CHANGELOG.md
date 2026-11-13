@@ -1,3 +1,10 @@
+## v0.4.0-rc1 — proposed, unmerged
+
+- Fix release gating for unresolved high/critical detailed findings and enforce revision-consistent report evidence.
+- Add negative regression tests for forged PASS and unverified fix claims.
+- Add offline agent telemetry scoring and synthetic regression fixtures (not real agent performance scores).
+- Add optional real SDK v2 MCP stdio smoke test, quick PR mode and stack-specific playbooks.
+
 # Changelog
 
 ## 0.3.0 — proposed (2026-11-13)

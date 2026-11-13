@@ -1960,7 +1960,53 @@
     "findings": {
       "type": "array",
       "items": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "informational",
+              "none"
+            ]
+          },
+          "resolution_status": {
+            "enum": [
+              "open",
+              "in_progress",
+              "needs_approval",
+              "fixed_verified",
+              "false_positive_verified",
+              "accepted_risk"
+            ]
+          },
+          "verification_ref": {
+            "type": "string"
+          },
+          "disposition_justification": {
+            "type": "string"
+          },
+          "test_result": {
+            "enum": [
+              "pass",
+              "fail",
+              "blocked",
+              "not_run"
+            ]
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "fix": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
       }
     },
     "changed_files": {
@@ -1972,7 +2018,36 @@
     "verification_log": {
       "type": "array",
       "items": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "string"
+          },
+          "observed": {
+            "type": "string"
+          },
+          "result": {
+            "enum": [
+              "pass",
+              "fail",
+              "blocked",
+              "not_run"
+            ]
+          }
+        },
+        "additionalProperties": true
       }
     }
   }

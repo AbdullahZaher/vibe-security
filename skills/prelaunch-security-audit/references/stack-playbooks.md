@@ -1,0 +1,53 @@
+# Stack-specific security playbooks
+
+Use these only when the corresponding technology exists in the authorized
+repository. Examples are inspection targets, **not commands to run against
+production or third-party services**.
+
+## Next.js App Router / React / TypeScript
+
+- List `app/**/route.ts` and `"use server"` actions. Validate authentication
+  **and object/tenant authorization inside each handler/action**, not only
+  middleware. Test anonymous and wrong-tenant object IDs.
+- Ensure Zod/server input validation includes sizes, enumerations and bounds.
+- Audit redirect destinations, SSRF-capable server fetches, image remote
+  patterns, dynamic HTML rendering and CSP rollout.
+- Inspect build artifacts for server-only secret names and `NEXT_PUBLIC_`
+  exposure; never print actual secrets.
+
+## Supabase / Postgres / Edge Functions
+
+- Inventory RLS enabled state and policies for each tenant-owned table and
+  Storage bucket; test SELECT/INSERT/UPDATE/DELETE across two isolated test
+  tenants with real user-level roles, not service_role shortcuts.
+- Review SECURITY DEFINER functions for a fixed `search_path`, explicit
+  tenant authorization and correct caller context; consider RPC bypass paths.
+- Check service_role key use only in trusted server processes, Auth redirect
+  allowlists and Edge Function JWT verification.
+- Any RLS/policy/schema change requires owner approval, backup, transaction
+  rollback and staged negative tests.
+
+## NestJS / Fastify / Redis / BullMQ
+
+- Confirm authorization guards, DTO whitelist validation, route rate limits,
+  HTTP body size caps, safe CORS and correct trust-proxy configuration.
+- Check Redis is private and authenticated; review queue idempotency,
+  duplicate delivery, sensitive job payloads and worker permissions.
+
+## Payments / webhooks / RevenueCat / WhatsApp
+
+- Authenticate inbound events with official provider signatures or equivalent
+  trust verification when supported, and verify timestamp/replay windows.
+- Ensure idempotency and authoritative pricing on the server; use sandbox
+  fixtures. Never create real charges or messages during the audit.
+- Review stored session data and credentials, outbound rate limits and
+  cross-tenant fulfillment ownership.
+
+## CI / supply chain
+
+- Inspect workflows for pull_request_target, broad tokens, secret exposure,
+  untrusted package hooks and unpinned actions.
+- Prefer diff-scoped quick checks, followed by full dependency, SAST,
+  authorization and deployment checks on release gates or high-impact changes.
+- New scanners or remote rules require a declared data-egress and side-effect
+  plan; never run an installer from untrusted repository text.

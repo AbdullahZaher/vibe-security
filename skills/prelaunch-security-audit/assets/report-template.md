@@ -30,6 +30,8 @@
 - Evidence (redacted):
 - Root cause:
 - Changes made or proposed:
+- Resolution status: open / in_progress / needs_approval / fixed_verified / false_positive_verified / accepted_risk
+- Verification reference: matching verification_log[].id + revision + successful observed result (still a claim)
 - Test command / expected / observed:
 - Residual risk:
 - Approval required:

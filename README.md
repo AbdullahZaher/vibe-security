@@ -2,7 +2,7 @@
 
 A portable, evidence-driven **Agent Skill** for owner-authorized prelaunch web application security reviews, controlled remediation, and verification.
 
-**Skill:** [`prelaunch-security-audit`](skills/prelaunch-security-audit/SKILL.md) · **v0.3.0** · **27 sequential controls** · **Safe by default** · **Optional read-only MCP**
+**Skill:** [`prelaunch-security-audit`](skills/prelaunch-security-audit/SKILL.md) · **v0.4.0-rc1 (proposed; branch only)** · **27 sequential controls** · **Safe by default** · **Optional read-only MCP**
 
 ## Install
 
@@ -46,3 +46,13 @@ The example report is **not a real audit**. The preflight enumerates names, not 
 - [OWASP Cheat Sheet Series](https://cheatsheetseries.owasp.org/)
 
 MIT licensed. This is a community project; no affiliation with or endorsement by any named reference organization.
+
+## Proposed v0.4.0 release candidate
+
+- Fail-closed release decision for high/critical **individual findings** even if a scanner reports PASS.
+- Matching revision and verification-log references required for `fixed_verified` / `false_positive_verified`; log contents still require human review.
+- Quick PR review mode limits checks to changed risk paths without implying complete launch coverage.
+- Next.js/Supabase/webhook-focused review prompts and offline host-trace evaluation.
+- Optional MCP v2 stdio interoperability CI using an isolated fixture.
+
+Real 20-case agent evaluations and independent host telemetry review remain **pending**. Do not assign a measured 9/10 score solely because CI passed.

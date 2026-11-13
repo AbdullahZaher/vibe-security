@@ -129,3 +129,12 @@ For benchmark-informed design decisions, see `../../docs/benchmark-and-design-re
 - [ ] Publish a public GitHub repository and tag a versioned release.
 - [ ] Confirm `npx skills add AbdullahZaher/vibe-security --skill prelaunch-security-audit` installs correctly.
 - [ ] Do not publish sensitive findings from customers as public issues.
+
+## Review modes (v0.4.0 release candidate)
+
+- **Quick PR review:** analyze the changed files and adjacent auth/data boundaries, run only approved targeted tests, and report what was not covered. Never describe it as a complete 27-control audit.
+- **Full prelaunch audit:** retain the original sequential 27-control evidence workflow and release recommendation.
+
+See [review-modes.md](references/review-modes.md) and [stack-playbooks.md](references/stack-playbooks.md). The report now links high/critical finding resolution to a matching-revision verification log. It does **not** authenticate log contents.
+
+Agent evaluation: use [evals/README.md](../../evals/README.md) for the offline host-trace scoring format. The 20 cases are specifications; no real agent behavior benchmark is claimed.

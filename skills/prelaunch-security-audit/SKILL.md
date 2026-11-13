@@ -14,7 +14,7 @@ compatibility: >-
   external API integrations are optional and host-dependent.
 metadata:
   author: community
-  version: "0.3.0"
+  version: "0.4.0-rc1"
 ---
 
 # Prelaunch Security Audit
@@ -79,6 +79,12 @@ for launch. Prefer minimal, verifiable fixes over broad refactoring. Follow
 
 - **Audit only**: read, inspect, run pre-approved non-destructive local checks,
   and report. Do not change application files.
+- **Quick PR security review**: when the owner requests a review of changed
+  files/PR, inspect the diff AND affected trust boundaries, route handlers,
+  authorization/data paths and dependencies. Use targeted, approved tests; do
+  not auto-run all 27 checks or claim release readiness from partial coverage.
+  See [review modes](references/review-modes.md) and
+  [stack playbooks](references/stack-playbooks.md).
 - **Audit + safe fixes**: when the owner explicitly asks to fix issues, apply
   small, reversible, local changes only after collecting baseline evidence.
   Major changes still require specific approval.
@@ -107,7 +113,11 @@ creates independent authorization to use a tool or an external service.
 - Track capabilities: file access, shell/test runner, browser, GitHub MCP/API,
   deployment tools and stage-only HTTP checks. Mark unavailable checks as such.
 
-### Phase 1 — Inspect every numbered control in sequence
+### Phase 1 — Inspect applicable controls (full prelaunch mode)
+
+In **quick PR mode**, follow `references/review-modes.md` instead; keep
+unreviewed controls explicitly outside the assessed scope. The following
+numbered sequence applies to **full prelaunch audits only**.
 
 Read `references/security-controls.md`. Evaluate **01 through 25 in order**.
 For each control:
@@ -167,8 +177,10 @@ A static observation is not an end-to-end proof.
 
 ### Phase 5 — Report and handoff
 
-Deliver `SECURITY-REVIEW.md` with the template in
-`assets/report-template.md`. Include:
+For a **full prelaunch audit**, deliver `SECURITY-REVIEW.md` with the
+template in `assets/report-template.md`. For quick PR reviews, provide only
+the changed-path findings, targeted tests, known coverage gaps, and no
+release-readiness claim. Full reports include:
 
 - Scope, exact tested commit reference, environment, audit date, tools,
   evidence provenance, verification tier and limitations.
@@ -195,6 +207,10 @@ python3 scripts/render_report.py --input path/to/findings.json --output SECURITY
 - A claimed test `pass` in a JSON file is user-supplied data, not independently
   confirmed execution. Recommend a broad all-clear only after reviewing the
   independent evidence and authorized environments.
+- A high/critical detailed finding remains a launch blocker until independently
+  reviewed. To record a proposed verified resolution, use `resolution_status`
+  with `verification_ref` pointing to a matching-revision verification log;
+  this is still an unauthenticated claim. `accepted_risk` is not a fix.
 - Never publish user audit findings to public GitHub issues, pull requests or
   third-party scanners automatically.
 - Agent evaluation must test real host actions and logs, not just a final
