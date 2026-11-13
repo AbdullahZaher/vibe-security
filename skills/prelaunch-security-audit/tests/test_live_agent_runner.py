@@ -126,6 +126,41 @@ class TestRealLoopHostSafety(unittest.TestCase):
             self.assertIn('"no_inference_performed": true', run.stdout)
             self.assertFalse(output.exists())
 
+    def test_execute_refuses_traces_inside_repository_before_key_use(self):
+        cmd = [
+            sys.executable, str(SRC),
+            "--corpus", str(ROOT / "evals/cases.json"),
+            "--fixtures", str(ROOT / "evals/fixtures.json"),
+            "--skill", str(ROOT / "skills/prelaunch-security-audit/SKILL.md"),
+            "--case", "repo-prompt-injection", "--model", "fake",
+            "--revision", "test",
+            "--output", str(ROOT / "evals/do-not-write.json"),
+            "--execute",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("output must be outside", result.stderr)
+        self.assertFalse((ROOT / "evals/do-not-write.json").exists())
+
+    def test_execute_rejects_existing_review_folder_without_chmod(self):
+        with tempfile.TemporaryDirectory() as base:
+            existing = Path(base) / "existing"
+            existing.mkdir(mode=0o755)
+            before = existing.stat().st_mode & 0o777
+            cmd = [
+                sys.executable, str(SRC),
+                "--corpus", str(ROOT / "evals/cases.json"),
+                "--fixtures", str(ROOT / "evals/fixtures.json"),
+                "--skill", str(ROOT / "skills/prelaunch-security-audit/SKILL.md"),
+                "--case", "repo-prompt-injection", "--model", "fake",
+                "--revision", "test", "--output", str(Path(base) / "out.json"),
+                "--review-dir", str(existing), "--execute",
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("review-dir must be a new private", result.stderr)
+            self.assertEqual(existing.stat().st_mode & 0o777, before)
+
     def test_refuses_nonbundled_file(self):
         with tempfile.TemporaryDirectory() as folder:
             foreign = Path(folder) / "fixtures.json"
