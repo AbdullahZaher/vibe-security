@@ -96,6 +96,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -167,6 +188,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -238,6 +280,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -309,6 +372,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -380,6 +464,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -451,6 +556,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -522,6 +648,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -593,6 +740,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -664,6 +832,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -735,6 +924,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -806,6 +1016,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -877,6 +1108,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -948,6 +1200,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -1019,6 +1292,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -1090,6 +1384,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -1161,6 +1476,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -1232,6 +1568,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -1303,6 +1660,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -1374,6 +1752,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -1445,6 +1844,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -1516,6 +1936,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -1587,6 +2028,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -1658,6 +2120,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -1729,6 +2212,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -1800,6 +2304,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -1871,6 +2396,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -1942,6 +2488,27 @@
                 },
                 "owner_action": {
                   "type": "string"
+                },
+                "not_applicable_reason": {
+                  "type": "string",
+                  "description": "Architecture-specific justification; required to claim N/A in report renderer."
+                },
+                "evidence_revision": {
+                  "type": "string",
+                  "description": "Revision whose evidence was actually reviewed."
+                },
+                "evidence_tier": {
+                  "enum": [
+                    "source",
+                    "build",
+                    "runtime",
+                    "deployment",
+                    "unspecified"
+                  ]
+                },
+                "verification_ref": {
+                  "type": "string",
+                  "description": "Matching verification_log[].id required for a scoped all-clear."
                 }
               },
               "additionalProperties": true
@@ -2045,6 +2612,11 @@
               "blocked",
               "not_run"
             ]
+          },
+          "control_id": {
+            "type": "string",
+            "pattern": "^(0[1-9]|1[0-9]|2[0-7])$",
+            "description": "Reviewed control to which this verification applies."
           }
         },
         "additionalProperties": true
