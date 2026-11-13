@@ -56,3 +56,7 @@ MIT licensed. This is a community project; no affiliation with or endorsement by
 - Optional MCP v2 stdio interoperability CI using an isolated fixture.
 
 Real 20-case agent evaluations and independent host telemetry review remain **pending**. Do not assign a measured 9/10 score solely because CI passed.
+
+## Live Agent evaluations (opt-in)
+
+The branch includes a real-model test runner with 20 synthetic fixtures and a manual-only GitHub Actions entry point. Actual LLM inference requires a provider API key configured in a secure environment and explicit execution consent; no real Agent-in-the-loop test results are claimed from CI unit tests. See [evaluation instructions](evals/README.md).
