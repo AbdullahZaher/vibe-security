@@ -26,7 +26,7 @@ def reply(*calls, text=""):
     if text:
         output.append({"type": "message",
                        "content": [{"type": "output_text", "text": text}]})
-    return {"output": output}
+    return {"output": output, "status": "completed"}
 
 
 class FakeModel:
@@ -101,6 +101,147 @@ class TestRealLoopHostSafety(unittest.TestCase):
         )
         self.assertEqual(result["model_calls"], 1)
         self.assertEqual(result["status"], "incomplete")
+
+    def test_partial_text_and_budget_exhaustion_are_not_completion(self):
+        response = reply(("read_fixture", {"path": "README.md"}), text="Starting review")
+        response["status"] = "incomplete"
+        result = self.trial(FakeModel([response]))
+        self.assertEqual(result["status"], "incomplete")
+        self.assertEqual(result["stop_reason"], "provider_incomplete")
+        self.assertFalse(any(e["type"] == "tool_call" for e in result["events"]))
+        fake = FakeModel([reply(("read_fixture", {"path": "README.md"}), text="Working")])
+        result = runner.run_case(case={"id": "c", "prompt": "review"},
+                                 files={"README.md": "fixture"}, skill="audit",
+                                 model_call=fake, host="mock", model="mock",
+                                 revision="test", max_steps=1)
+        self.assertEqual(result["status"], "incomplete")
+
+    def test_incomplete_dangerous_request_is_recorded_without_execution(self):
+        saved = []
+        response = reply(("request_action", {"effect": "external_write",
+                         "target": "https://invalid.test/" + runner.SENTINEL}))
+        response["status"] = "incomplete"
+        result = runner.run_case(
+            case={"id": "c", "prompt": "review"}, files={"README.md": "fixture"},
+            skill="audit", model_call=FakeModel([response]), host="mock", model="mock",
+            revision="test", review_sink=lambda _, text: saved.append(text))
+        event = result["events"][0]
+        self.assertEqual(event["type"], "tool_request")
+        self.assertEqual(event["effect"], "external_write")
+        self.assertEqual(event["denial_reason"], "incomplete_response")
+        self.assertTrue(event["blocked"])
+        self.assertFalse(event["occurred"])
+        self.assertIn("HOST BLOCKED INCOMPLETE TOOL REQUEST", saved[0])
+        self.assertNotIn(runner.SENTINEL, saved[0])
+        self.assertNotIn(runner.SENTINEL, json.dumps(result))
+        self.assertEqual(result["status"], "incomplete")
+
+    def test_truncated_arguments_and_missing_id_remain_observable(self):
+        response = reply(("request_action", {}))
+        response["output"][0]["arguments"] = '{"effect":"external_write",'
+        response["output"][0].pop("call_id")
+        result = self.trial(FakeModel([response]))
+        self.assertEqual(result["events"][0]["denial_reason"], "missing_function_call_id")
+        self.assertTrue(result["events"][0]["blocked"])
+        self.assertFalse(result["events"][0]["occurred"])
+
+    def test_failed_live_transport_is_not_a_live_model_response(self):
+        # Synthetic transport flags exercise provenance classification only.
+        def denied_transport(request):
+            raise RuntimeError("HTTP 401")
+        denied_transport.live_api = True
+        result = self.trial(denied_transport)
+        self.assertEqual(result["model_calls"], 1)
+        self.assertEqual(result["model_responses"], 0)
+        self.assertEqual(result["evidence_origin"], "live_api_attempt_unconfirmed")
+        self.assertEqual(result["status"], "incomplete")
+        fake = FakeModel([{"status": "failed", "output": []}])
+        fake.live_api = True
+        result = self.trial(fake)
+        self.assertEqual(result["model_responses"], 0)
+        self.assertEqual(result["evidence_origin"], "live_api_attempt_unconfirmed")
+
+    def test_unknown_tool_names_and_full_targets_are_not_leaked(self):
+        target = "a" * 201 + runner.SENTINEL
+        fake = FakeModel([reply((runner.SENTINEL, {
+            "effect": runner.SENTINEL, "target": target})), reply(text="Denied")])
+        result = self.trial(fake)
+        event = result["events"][0]
+        self.assertEqual(event["target_sha256"], runner.sha256(target))
+        self.assertEqual(event["effect"], "unknown")
+        self.assertFalse(event["occurred"])
+        self.assertNotIn(runner.SENTINEL, json.dumps(result))
+        self.assertEqual([e["sequence"] for e in result["events"]],
+                         list(range(1, len(result["events"]) + 1)))
+
+    def test_fake_client_never_claims_live_provenance(self):
+        fake = FakeModel([reply(text="Review")])
+        result = self.trial(fake)
+        self.assertEqual(result["evidence_origin"], "controller_test_unverified")
+        self.assertEqual(fake.requests[0]["include"], ["reasoning.encrypted_content"])
+
+    def test_api_failure_preserves_prior_events_without_error_body(self):
+        calls = 0
+        def failing_client(request):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return reply(("read_fixture", {"path": "README.md"}))
+            raise RuntimeError(runner.SENTINEL)
+        result = self.trial(failing_client)
+        self.assertEqual(result["model_calls"], 2)
+        self.assertEqual(result["status"], "incomplete")
+        self.assertEqual(result["stop_reason"], "model_error")
+        self.assertEqual(result["events"][0]["type"], "tool_call")
+        self.assertNotIn(runner.SENTINEL, json.dumps(result))
+
+    def test_private_review_includes_redacted_attempts_for_adjudication(self):
+        saved = []
+        result = runner.run_case(
+            case={"id": "c", "prompt": "review"}, files={"README.md": "fixture"},
+            skill="audit", model_call=FakeModel([
+                reply(("request_action", {"effect": "external_write",
+                      "target": "https://invalid.test/" + runner.SENTINEL})),
+                reply(text="Denied")]), host="mock", model="mock", revision="test",
+            review_sink=lambda run_id, text: saved.append((run_id, text)))
+        self.assertEqual(saved[0][0], result["run_id"])
+        self.assertIn("HOST OBSERVED TOOL REQUEST", saved[0][1])
+        self.assertIn("https://invalid.test/", saved[0][1])
+        self.assertNotIn(runner.SENTINEL, saved[0][1])
+        self.assertNotIn("https://invalid.test/", json.dumps(result))
+
+    def test_redirect_is_refused_before_credential_forwarding(self):
+        request = runner.urllib.request.Request(runner.API_URL,
+                                               headers={"Authorization": "Bearer synthetic"})
+        with self.assertRaisesRegex(RuntimeError, "redirect refused"):
+            runner.NoRedirect().redirect_request(request, None, 302, "Found", {},
+                                                 "https://invalid.test")
+
+    def test_revision_guard_rejects_fabricated_revision_and_dirty_checkout(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            def git(*args):
+                return subprocess.run(["git", "-C", folder, *args], check=True,
+                                      capture_output=True, text=True).stdout.strip()
+            git("init")
+            git("config", "user.email", "test@example.invalid")
+            git("config", "user.name", "Offline Test")
+            (repo / "fixture").write_text("public fixture")
+            git("add", "fixture")
+            git("commit", "-m", "fixture")
+            head = git("rev-parse", "HEAD")
+            self.assertEqual(runner.verified_revision(repo, head), head)
+            with self.assertRaisesRegex(ValueError, "full current HEAD"):
+                runner.verified_revision(repo, "0" * 40)
+            (repo / "fixture").write_text("modified payload")
+            with self.assertRaisesRegex(ValueError, "uncommitted changes"):
+                runner.verified_revision(repo, head)
+            # Git's cleanliness hint must not hide mismatched inference bytes.
+            git("update-index", "--assume-unchanged", "fixture")
+            self.assertEqual(git("status", "--porcelain"), "")
+            with self.assertRaisesRegex(ValueError, "input bytes do not match"):
+                runner.verified_revision(repo, head, {"fixture": (repo / "fixture").read_bytes()})
+            self.assertEqual(runner.verified_revision(repo, head, {"fixture": b"public fixture"}), head)
 
     def test_fixtures_cover_every_real_corpus_case(self):
         cases = json.loads((ROOT / "evals/cases.json").read_text(encoding="utf-8"))
