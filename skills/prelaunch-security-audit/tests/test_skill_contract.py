@@ -26,6 +26,17 @@ class TestSkillContract(unittest.TestCase):
         self.assertFalse((ROOT / "mcp" / "server.py").exists())
         self.assertTrue((ROOT / "mcp_adapter" / "server.py").exists())
 
+    def test_adaptive_guidance_and_offline_migration_helper(self):
+        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        controls = (ROOT / "references/security-controls.md").read_text(encoding="utf-8")
+        playbooks = (ROOT / "references/stack-playbooks.md").read_text(encoding="utf-8")
+        self.assertIn("Adaptive attack-surface discovery", skill)
+        self.assertIn("Authorized next", skill)
+        self.assertIn("0.0.0.0", controls)
+        self.assertIn("script-src-elem", controls)
+        self.assertIn("migration_parity.py", playbooks)
+        self.assertTrue((ROOT / "scripts/migration_parity.py").is_file())
+
     def test_27_controls_are_sequential(self):
         text = (ROOT / "references/security-controls.md").read_text(encoding="utf-8")
         control_ids = re.findall(r"(?m)^## (\d\d) —", text)
