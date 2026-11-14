@@ -12,6 +12,10 @@
 - Test adjacent paths: alternate roles, tenants, API methods, object IDs, failure paths, replay, concurrency, serialization, and caching where applicable.
 - Run authorized build/typecheck/unit/integration and report exact commands and exit codes.
 - Track which control, asset and environment the evidence supports. A passing unit test never proves an entire live deployment is secure.
+- Distinguish configured security intent from effective deployed behavior:
+  config-only CSP, source-only RLS and migration history without SQL verification
+  do not establish runtime enforcement. Classify non-security build and test
+  failures as release/verification issues, not automatically vulnerabilities.
 
 ## Coverage labels
 
