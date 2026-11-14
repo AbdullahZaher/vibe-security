@@ -26,6 +26,11 @@ RLS where available, server-side filtering and least-privilege DB accounts.
 **Fix:** deny-by-default ownership checks; appropriate RLS/policies in systems
 that support them. **Verify:** user A cannot read/write B's records, including
 by directly changing identifiers. RLS/policy changes require approval.
+Where database migrations are in scope, compare **migration identifiers** from
+the authorized test database against versioned repository files; equal counts
+can hide missing and unexpected migrations. Never assume a local container
+matches staging or production, automatically apply migrations, or treat an
+ID match as proof of schema equality. See optional offline helper below.
 
 ## 04 — Enforce HTTPS
 **Inspect:** host/CDN TLS, HTTP redirect, mixed content, HSTS readiness across
@@ -51,7 +56,11 @@ responses without exposing internals; UI checks alone are insufficient.
 unsafe `innerHTML`/`dangerouslySetInnerHTML`. **Fix:** contextual output
 encoding, safe rendering and vetted sanitization where HTML is required;
 consider CSP defense in depth. **Verify:** controlled strings are displayed as
-data, not executed. Do not test public users with malicious payloads.
+data, not executed. Do not test public users with malicious payloads. Review
+actual `script-src`/`script-src-elem` behavior (including fallback) for inline
+script policy, nonces, hashes, and trusted loading. `'unsafe-inline'` without an
+effective nonce/hash mechanism weakens defense in depth, but does not by itself
+prove an exploitable XSS vulnerability.
 
 ## 08 — Logging and monitoring
 **Inspect:** authentication/admin activity, alert routing, telemetry and PII/
@@ -94,8 +103,16 @@ server-to-server request blocker; keep server authorization and CSRF.
 ## 14 — Security headers
 **Inspect:** CSP, `frame-ancestors`/X-Frame-Options, HSTS, nosniff, Referrer-
 Policy, and framework/CDN precedence. **Fix:** tailored headers, start CSP in
-report-only where appropriate, avoid breaking integrations. **Verify:** headers
-and key application flows in staging; strict deployment requires approval.
+report-only where appropriate, avoid breaking integrations. **Verify:** inspect
+the *effective enforced response header* (not just a source configuration);
+consider `script-src`, `script-src-elem`, default fallback, nonce/hash
+authorization, `'strict-dynamic'` semantics, compatibility, and third-party
+script needs. A hash or per-response unpredictable nonce can support a strict
+policy; `'strict-dynamic'` alone does not authorize arbitrary inline scripts.
+Treat unmitigated `'unsafe-inline'` as a scoped hardening weakness based on
+reachability and threat model, not automatic proof of XSS or a mandatory High.
+Test key application flows in authorized staging; strict deployment requires
+approval.
 
 ## 15 — Secure cookies
 **Inspect:** session cookie `Secure`, `HttpOnly`, appropriate `SameSite`, path,
@@ -170,8 +187,14 @@ confirms old key revoked, new key works, no leaks in logs/bundles/history.
 ## 26 — Integrated security review
 **Inspect:** revisit trust boundaries, privilege escalation, BOLA/IDOR,
 account recovery, admin workflows, business logic, third-party access,
-supply-chain, incident response and deployment exposures. Cross-check with
-OWASP ASVS 5.0 and WSTG. **Verify:** consolidate findings, rank risk from
+supply-chain, incident response and deployment exposures. Include hypotheses
+from exploratory discovery: host listeners, container/Compose published ports,
+reverse-proxy boundaries, cloud security groups and publicly exposed DB/cache
+services where applicable. Treat `0.0.0.0` and `::` as wildcard *bindings*:
+firewall, routing, isolation and intended access determine exploitability.
+Check both configured and observed exposure only with permission; missing
+runtime evidence means `not_verified`, not `pass`. Cross-check with OWASP
+ASVS 5.0 and WSTG. **Verify:** consolidate findings, rank risk from
 actual exposure, document uncovered boundaries and scope limitations.
 
 ## 27 — Test and report
@@ -179,7 +202,9 @@ actual exposure, document uncovered boundaries and scope limitations.
 remaining high-severity gaps and owner decisions. **Fix:** report validated
 remediations and unresolved issues separately. **Verify:** summarize executed
 commands and exits, report all 27 statuses, and issue release recommendation
-without inventing certification.
+without inventing certification. Classify application vulnerabilities separately
+from broken tests/build environments and out-of-sync *disposable* migrations;
+a release blocker is not automatically an exploitable security flaw.
 
 ## Standards
 
