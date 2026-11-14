@@ -20,6 +20,9 @@ executed tests support the claim. Never mark blocked/unrun as passed.
 - Preserve test output summaries and exit codes (redacted).
 - Re-run relevant checks after each fix; report regressions separately.
 - A successful build does not establish that any security control works.
+- Failed unit tests, build incompatibilities and migration-history mismatches
+  are meaningful release/verification findings; do not mislabel them as
+  exploitable application vulnerabilities without a security-impact path.
 
 ## Recommended negative tests by domain
 
@@ -44,6 +47,17 @@ executed tests support the claim. Never mark blocked/unrun as passed.
   exposed from the generated build; only safe authorized stage checks.
 - **Dependencies/history:** use established audit and secret detection tools,
   redact matched values; verify package build/test post-change.
+
+## Limited-evidence handoff
+
+If executable checks are blocked, show **Authorized next checks (not executed)**
+with a small number of technology-relevant, copy-ready examples and the target
+environment/permissions needed. Review package scripts before recommending
+`pnpm test`/`npm test` or any command capable of side effects. A read-only
+`git status --short` or offline `preflight.py` may be suitable; active scans,
+network checks, database queries and Docker daemon access still require their
+own authorization and isolation. Mark outcomes `not_run`/`not_verified`.
+Never imply the suggested commands were actually executed.
 
 ## Evidence format
 
