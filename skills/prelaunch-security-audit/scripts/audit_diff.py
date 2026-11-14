@@ -11,7 +11,9 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import selectors
 import subprocess
+import time
 
 from audit_artifacts import safe_relative_path
 
@@ -32,16 +34,41 @@ def _revision(value):
     return value
 
 
+def _bounded_metadata(command, env, max_bytes=2_000_000, timeout=30):
+    """Drain metadata incrementally; target metadata cannot allocate unbounded output."""
+    deadline = time.monotonic() + timeout
+    chunks = bytearray()
+    with subprocess.Popen(command, env=env, stdout=subprocess.PIPE,
+                          stderr=subprocess.DEVNULL) as process:
+        try:
+            with selectors.DefaultSelector() as selector:
+                selector.register(process.stdout, selectors.EVENT_READ)
+                while True:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0 or not selector.select(remaining):
+                        raise ValueError("Git metadata read timed out")
+                    part = os.read(process.stdout.fileno(), min(65536, max_bytes + 1 - len(chunks)))
+                    if not part:
+                        break
+                    chunks.extend(part)
+                    if len(chunks) > max_bytes:
+                        raise ValueError("Git metadata exceeds limit; narrow the reviewed scope")
+            code = process.wait(timeout=max(0.001, deadline - time.monotonic()))
+        except BaseException:
+            process.kill()
+            process.wait()
+            raise
+    return subprocess.CompletedProcess(command, code, bytes(chunks), b"")
+
+
 def _git(root, *args, check=True):
     # No inherited Git config injection, SSH/credential/socket env or home config.
     env = {"PATH": os.defpath, "LANG": "C", "GIT_CONFIG_NOSYSTEM": "1",
            "GIT_CONFIG_GLOBAL": os.devnull, "GIT_TERMINAL_PROMPT": "0", "GIT_NO_LAZY_FETCH": "1"}
-    result = subprocess.run(["git", "--no-replace-objects", "-c", "core.fsmonitor=false",
+    command = ["git", "--no-replace-objects", "-c", "core.fsmonitor=false",
         "-c", "core.hooksPath=" + os.devnull, "-c", "diff.external=",
-        "-c", "core.attributesFile=" + os.devnull, "-c", "protocol.allow=never", "-C", str(root), *args],
-        env=env, capture_output=True, timeout=30)
-    if len(result.stdout) > 2_000_000:
-        raise ValueError("Git metadata exceeds limit; narrow the reviewed scope")
+        "-c", "core.attributesFile=" + os.devnull, "-c", "protocol.allow=never", "-C", str(root), *args]
+    result = _bounded_metadata(command, env)
     if check and result.returncode:
         raise ValueError("Git snapshot unavailable (no fetch or target code execution attempted)")
     return result

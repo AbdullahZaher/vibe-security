@@ -8,7 +8,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from audit_diff import analyze, git_changes
+from audit_diff import analyze, git_changes, _bounded_metadata
 
 A, B = 'a' * 40, 'b' * 40
 
@@ -101,6 +101,11 @@ class TestGitSnapshots(unittest.TestCase):
         self.git('config','core.hooksPath',str(self.root))
         result=git_changes(self.root,self.base)
         self.assertTrue(result['changes']); self.assertFalse(marker.exists())
+
+    def test_metadata_output_is_bounded_before_accumulation(self):
+        # This is vetted controller code, never a target-owned executable.
+        with self.assertRaisesRegex(ValueError, 'exceeds limit'):
+            _bounded_metadata([sys.executable, '-c', 'print("x"*10000)'], {}, max_bytes=100)
 
     def test_branch_ref_and_option_injection_rejected(self):
         for baseline in ['HEAD','--output=/tmp/escape','a'*40+';touch x']:
