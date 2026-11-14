@@ -1,7 +1,49 @@
 name: Verify Agent Skill
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      live_eval:
+        description: "Enable billable live-model eval on synthetic fixtures (explicit opt-in)"
+        type: boolean
+        required: true
+        default: false
+      case:
+        description: "One isolated case (not the full 120-run benchmark)"
+        type: choice
+        required: true
+        options:
+          - repo-prompt-injection
+          - unauthenticated-admin
+          - public-vite-secret
+          - supabase-tenant-rls
+          - payment-webhook
+          - static-no-backend
+          - no-scanner-access
+          - dangerous-history-rewrite
+          - tool-result-injection
+          - code-comment-injection
+          - unicode-encoded-injection
+          - mcp-schema-poisoning
+          - mcp-cross-server
+          - mcp-token-passthrough
+          - lifecycle-scripts
+          - unsafe-reset
+          - scope-creep
+          - evidence-laundering
+          - wrong-revision
+          - benign-completion
+      model:
+        description: "A model enabled for your OpenAI API project"
+        type: string
+        required: true
+      repeat:
+        description: "Number of isolated runs (each may incur API charges)"
+        type: choice
+        default: "1"
+        options: ["1", "3"]
 permissions:
   contents: read
 jobs:
@@ -19,7 +61,7 @@ jobs:
         with:
           python-version: '3.13'
       - name: Compile source
-        run: python -m compileall -q scripts mcp_adapter tests
+        run: python -m compileall -q scripts mcp_adapter tests ../../evals
       - name: Run offline unit and contract tests
         run: python -m unittest discover -s tests -v
       - name: Schema and evaluation JSON syntax
@@ -27,4 +69,95 @@ jobs:
           python -m json.tool assets/findings.example.json > /dev/null
           python -m json.tool assets/findings.schema.json > /dev/null
           python -m json.tool ../../evals/cases.json > /dev/null
+          python -m json.tool ../../evals/fixtures.json > /dev/null
           python -m json.tool policy/action-policy.json > /dev/null
+  mcp-stdio-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: skills/prelaunch-security-audit
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Install exact MCP SDK for ephemeral integration test
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: 'mcp==2.2.0' 'cryptography==50.0.2'
+      - name: Test local stdio against disposable fixture
+        run: |
+          python -m unittest discover -s tests -p 'test_mcp_integration.py' -v
+      - name: Test authenticated encrypted evidence archive
+        run: |
+          python -m unittest discover -s tests -p 'test_evidence_sealing.py' -v
+  live-agent-single-case:
+    # Never run paid inference on push/PR. Only a manual explicit opt-in.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.live_eval == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Install pinned evidence encryption library
+        run: |
+          python3 -m pip install --disable-pip-version-check --only-binary=:all: 'cryptography==50.0.2'
+      - name: Run one explicitly authorized real-model case on synthetic files
+        id: live
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          EVAL_EVIDENCE_KEY: ${{ secrets.EVAL_EVIDENCE_KEY }}
+          EVAL_CASE: ${{ inputs.case }}
+          EVAL_MODEL: ${{ inputs.model }}
+          EVAL_REPEAT: ${{ inputs.repeat }}
+          EVAL_REVISION: ${{ github.sha }}
+          EVAL_HOST_ID: github-actions-ubuntu
+        run: |
+          if [ -z "$OPENAI_API_KEY" ] || [ -z "$EVAL_EVIDENCE_KEY" ]; then
+            echo "::error::Both API and evidence-encryption secrets are required before any billable trial."
+            exit 2
+          fi
+          python3 -c 'import base64,os; key=base64.b64decode(os.environ["EVAL_EVIDENCE_KEY"],validate=True); assert len(key)==32, "Encryption key must be 32 bytes"'
+          python3 evals/live_agent_runner.py \
+            --corpus evals/cases.json \
+            --fixtures evals/fixtures.json \
+            --skill skills/prelaunch-security-audit/SKILL.md \
+            --case "$EVAL_CASE" \
+            --model "$EVAL_MODEL" \
+            --revision "$EVAL_REVISION" \
+            --host-id "$EVAL_HOST_ID" \
+            --repeat "$EVAL_REPEAT" \
+            --max-steps 3 \
+            --max-output-tokens 500 \
+            --output "$RUNNER_TEMP/isolated-agent-trace.json" \
+            --review-dir "$RUNNER_TEMP/private-review" \
+            --execute
+      - name: Encrypt private host evidence
+        env:
+          EVAL_EVIDENCE_KEY: ${{ secrets.EVAL_EVIDENCE_KEY }}
+        run: |
+          python3 evals/seal_evidence.py seal \
+            --trace "$RUNNER_TEMP/isolated-agent-trace.json" \
+            --review-dir "$RUNNER_TEMP/private-review" \
+            --output "$RUNNER_TEMP/security-evidence.enc"
+      - name: Upload ciphertext only (24-hour retention)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: agent-encrypted-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/security-evidence.enc
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+      - name: Show redacted host metadata only (never model output)
+        run: |
+          python3 -c 'import json,os; p=os.path.join(os.environ["RUNNER_TEMP"],"isolated-agent-trace.json"); runs=json.load(open(p,encoding="utf-8"))["runs"]; print(json.dumps({"recorded_trials":len(runs),"completed_model_trials":sum(x["status"]=="response_produced" for x in runs),"model_request_attempts":sum(x["model_calls"] for x in runs),"model_responses":sum(x.get("model_responses",0) for x in runs),"blocked_unsafe_tool_requests":sum(1 for x in runs for e in x["events"] if e["type"]=="tool_request" and e.get("blocked")),"human_adjudication":"required","model_responses_exported":False}))'

@@ -57,6 +57,28 @@ python3 -m unittest discover -s tests -v
 The preflight checks metadata and filenames only. It does **not** inspect
 secret values, execute the application, or establish that a protection works.
 
+## Optional offline Supabase migration parity
+
+When authorized to examine a **disposable** Supabase database, an operator may
+separately export the applied version IDs from
+`supabase_migrations.schema_migrations` (a read-only query). Store one
+14-digit version per line in a local private file. Do not provide a database
+URL, token, connection string or credentials to the comparison script.
+
+```bash
+python3 scripts/migration_parity.py \
+  --root /path/to/authorized/project \
+  --applied-file /private/path/applied_versions.txt
+```
+
+Exit `0` means the supplied IDs match the repository IDs; `1` means missing,
+unexpected or duplicate IDs; `2` means incomplete/invalid inputs. This tool
+**never** connects to a database, reads migration SQL contents or applies any
+migration; the operator must independently verify the exported list's origin.
+Equal counts or even matching IDs do not establish schema parity or runtime
+correctness. Other migration frameworks require their own metadata conventions
+and approved export procedures.
+
 ## Report generation
 
 `assets/findings.example.json` is a **blank structural example**, not actual
@@ -129,3 +151,16 @@ For benchmark-informed design decisions, see `../../docs/benchmark-and-design-re
 - [ ] Publish a public GitHub repository and tag a versioned release.
 - [ ] Confirm `npx skills add AbdullahZaher/vibe-security --skill prelaunch-security-audit` installs correctly.
 - [ ] Do not publish sensitive findings from customers as public issues.
+
+## Review modes (v0.4.0 release candidate)
+
+- **Quick PR review:** analyze the changed files and adjacent auth/data boundaries, run only approved targeted tests, and report what was not covered. Never describe it as a complete 27-control audit.
+- **Full prelaunch audit:** retain the original sequential 27-control evidence workflow and release recommendation.
+- **Adaptive discovery:** inventory unexpected trust boundaries and host-facing
+  services before the checklist. Investigate actual exposure and CSP policy
+  semantics, rather than assuming every wildcard bind or `'unsafe-inline'`
+  directive is a confirmed vulnerability.
+
+See [review-modes.md](references/review-modes.md) and [stack-playbooks.md](references/stack-playbooks.md). The report now links high/critical finding resolution to a matching-revision verification log. It does **not** authenticate log contents.
+
+Agent evaluation: use [evals/README.md](../../evals/README.md) for the offline host-trace scoring format. The 20 cases are specifications; no real agent behavior benchmark is claimed.

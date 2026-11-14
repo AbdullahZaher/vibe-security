@@ -30,6 +30,8 @@
 - Evidence (redacted):
 - Root cause:
 - Changes made or proposed:
+- Resolution status: open / in_progress / needs_approval / fixed_verified / false_positive_verified / accepted_risk
+- Verification reference: matching verification_log[].id + revision + successful observed result (still a claim)
 - Test command / expected / observed:
 - Residual risk:
 - Approval required:
@@ -46,3 +48,13 @@
 
 ## Limitations and Residual Risk
 - (unavailable tests, third-party dependencies, manual pentest advisability)
+
+## Evidence consistency before a scoped all-clear
+
+For each `not_applicable` control, supply `not_applicable_reason`, architecture
+`evidence`, `test_method`, `evidence_tier` and matching `evidence_revision`.
+For each `pass` or `fixed_verified` control, supply `verification_ref` to a
+specific `verification_log[].id` with matching `control_id`, revision,
+method/environment/observed and PASS. For resolved findings, logs must also
+specify the matching `finding_id`. A single generic PASS or all-N/A report
+cannot establish an all-clear; these remain reviewable claims, not attestations.

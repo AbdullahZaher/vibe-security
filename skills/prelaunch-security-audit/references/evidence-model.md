@@ -34,3 +34,23 @@ redact identifiers/secrets, and explain missing prerequisites.
 The bundled renderer conservatively downgrades unsupported PASS claims when
 metadata contradicts the evaluated revision; it cannot verify arbitrary input
 logs are truthful. Human review is essential before launch decisions.
+
+## Report release gate (v0.4.0-rc1)
+
+- A control marked `not_applicable` requires a substantive
+  `not_applicable_reason`, a nonempty `evidence` location, a repeatable
+  `test_method`, a concrete `evidence_tier` and `evidence_revision` matching
+  the reviewed scope. Proposed `fix` text does **not** establish N/A.
+  A failed/blocked check cannot be labeled N/A.
+- A scoped all-clear cannot come from one unrelated passing test. Every
+  applicable `pass`/`fixed_verified` control needs a `verification_ref`
+  pointing to a distinct, matching `verification_log[].id`, `control_id`,
+  revision, method, environment, observed result and PASS. At least one
+  applicable control must actually be verified; 27 N/A claims cannot produce
+  an all-clear.
+- For a high/critical finding, any claimed verified resolution needs an
+  entry with matching `finding_id`, not only a shared log from another issue.
+  Verification IDs cannot be duplicated.
+- These checks enforce **structural consistency**, not the authenticity of
+  submitted test logs. A human security reviewer must independently examine
+  command output, environment and target revision before launch approval.
