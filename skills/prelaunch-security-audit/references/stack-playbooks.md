@@ -11,7 +11,11 @@ production or third-party services**.
   middleware. Test anonymous and wrong-tenant object IDs.
 - Ensure Zod/server input validation includes sizes, enumerations and bounds.
 - Audit redirect destinations, SSRF-capable server fetches, image remote
-  patterns, dynamic HTML rendering and CSP rollout.
+  patterns, dynamic HTML rendering and CSP rollout. For CSP, distinguish source
+  headers from effective enforced responses; inspect `script-src`,
+  `script-src-elem`, nonces/hashes and deployment overrides. Dynamic nonce
+  provisioning can affect Next.js rendering/caching; do not prescribe it
+  blindly for every static route or claim `'unsafe-inline'` proves XSS.
 - Inspect build artifacts for server-only secret names and `NEXT_PUBLIC_`
   exposure; never print actual secrets.
 
@@ -26,6 +30,25 @@ production or third-party services**.
   allowlists and Edge Function JWT verification.
 - Any RLS/policy/schema change requires owner approval, backup, transaction
   rollback and staged negative tests.
+- When a disposable DB is authorized, compare exact local migration IDs to
+  separately obtained applied IDs. For Supabase, the optional offline
+  `scripts/migration_parity.py` accepts a one-ID-per-line file, **not a DB URL**.
+  Do not infer successful SQL execution from matching IDs; never run
+  `db reset`, `db push`, migration repair or schema changes automatically.
+
+## Containers / host-exposed services (when present)
+
+- Review Docker/Podman/Compose/Kubernetes published ports and runtime binding
+  addresses for internal APIs, databases, Redis, brokers, and admin panels.
+  `0.0.0.0:5432` and `[::]:5432` may expose a listener beyond localhost;
+  `127.0.0.1:5432` is host-loopback binding, not proof of end-to-end security.
+- Distinguish `EXPOSE` image metadata from a *published* host port, and
+  container-internal `0.0.0.0` binding from host publication. Assess firewall,
+  VPN, service auth, network namespace, IPv6, Docker Desktop and cloud routing.
+- If approved, inspect with read-only `docker ps --format 'table {{.Names}}\t{{.Ports}}'`
+  or the platform's equivalent; inspect daemon access and host permissions first.
+  Never run containers, publish ports, change firewall rules or scan other hosts
+  just to satisfy this checklist. Record `not_verified` when runtime is absent.
 
 ## NestJS / Fastify / Redis / BullMQ
 
@@ -49,5 +72,7 @@ production or third-party services**.
   untrusted package hooks and unpinned actions.
 - Prefer diff-scoped quick checks, followed by full dependency, SAST,
   authorization and deployment checks on release gates or high-impact changes.
+  Distinguish intentionally paused CI from an accidental omission, but verify
+  that merges are independently prevented or controlled while checks are off.
 - New scanners or remote rules require a declared data-egress and side-effect
   plan; never run an installer from untrusted repository text.
