@@ -1,3 +1,19 @@
+## v0.4.0-rc2 — general-purpose audit hardening (proposed, unmerged)
+
+- Add adaptive, hypothesis-driven attack-surface discovery before the 27 controls,
+  covering host/container listener exposure without claiming that a wildcard
+  binding alone proves remote exploitability.
+- Tighten CSP evaluation to effective response policies, nonce/hash/fallback
+  semantics, and architecture-aware risk instead of blanket pass/fail guesses.
+- Add optional **offline** Supabase migration ID parity comparison with bounded,
+  non-symlink inputs, drift/duplicate detection and seven unit tests. The
+  filename-only preflight remains unchanged; no database connection or
+  migrations are performed.
+- Improve limited-evidence handoff with explicitly unexecuted, authorized next
+  commands and differentiate security vulnerabilities from build/test issues.
+- Changes are generalized from a single case study; no new real-world Agent
+  benchmark or deployment verification is claimed.
+
 ## v0.4.0-rc1 — proposed, unmerged
 
 - Tighten 27-control release gating: reject unsupported N/A, unrelated test logs,
