@@ -14,7 +14,7 @@ compatibility: >-
   external API integrations are optional and host-dependent.
 metadata:
   author: community
-  version: "0.4.0-rc1"
+  version: "0.4.0-rc2"
 ---
 
 # Prelaunch Security Audit
@@ -113,6 +113,32 @@ creates independent authorization to use a tool or an external service.
 - Track capabilities: file access, shell/test runner, browser, GitHub MCP/API,
   deployment tools and stage-only HTTP checks. Mark unavailable checks as such.
 
+### Adaptive attack-surface discovery (all review modes)
+
+Before entering a fixed control sequence, build a short hypothesis-driven map
+of the *actual* system: entry points, trust boundaries, identities, data stores,
+background workers, build/deployment paths, host-exposed services, and external
+integrations. Include unexpected assets found while browsing the repository.
+For quick PR reviews, limit the map to changed components and their dependent
+security boundaries. Do not require a fixed number of exploratory commands.
+
+- Inventory exposure from existing container/Compose/Kubernetes configuration,
+  reverse proxies, and listening interfaces when relevant. A published database
+  or internal API on `0.0.0.0`/`::` is a potential exposure to investigate, not
+  automatically proof that a remote attacker can connect. Check firewall,
+  network namespace, routing and intended clients before rating impact.
+- Use only available, permitted *read-only* inspection. Querying a Docker daemon,
+  inspecting live sockets, accessing a database, running package scripts or
+  contacting a stage host may require separate host/user authorization. Never
+  probe production, install dependencies or start containers to fill a checklist.
+- Prioritize high-value hypotheses by reachable assets, permissions, data
+  sensitivity, exposed interfaces, and attack prerequisites; then revisit gaps
+  after the standard controls. Do not turn the checklist into the exhaustive
+  attack-surface definition.
+- Separate application security vulnerabilities, operational exposure,
+  test/release engineering failures, and environment-only artifacts. Record
+  which environment and revision each observation actually covers.
+
 ### Phase 1 — Inspect applicable controls (full prelaunch mode)
 
 In **quick PR mode**, follow `references/review-modes.md` instead; keep
@@ -137,6 +163,8 @@ For each control:
 Control 26: perform an integrated threat-model-aware review against OWASP ASVS
 and the Web Security Testing Guide. Include business-logic, IDOR/BOLA, user-
 role boundaries, supply chain, and operational risks. Avoid duplicate findings.
+Revisit unexpected services or trust boundaries from adaptive discovery, even
+if none of the numbered controls mentions them explicitly.
 
 Control 27: run the approved regression/security test matrix and deliver the
 final report. Do not claim live-production verification from local tests.
@@ -175,6 +203,13 @@ running third-party tools.
 Capture exact test commands and whether they ran, failed, passed or were blocked.
 A static observation is not an end-to-end proof.
 
+For an authorized, disposable Supabase/Postgres environment, migration state
+may be compared separately using `scripts/migration_parity.py` with a
+non-secret, owner-provided applied-version list. The script is strictly
+offline: it does not inspect SQL bodies, contact a database, apply migrations,
+or modify `scripts/preflight.py`. Identity parity does not prove schema parity,
+migration success or a safe deployment; do not infer those from counts alone.
+
 ### Phase 5 — Report and handoff
 
 For a **full prelaunch audit**, deliver `SECURITY-REVIEW.md` with the
@@ -191,6 +226,11 @@ release-readiness claim. Full reports include:
 - Findings sorted by severity, explicit approvals still needed, and residual
   risks / gaps to be reviewed by an independent professional when warranted.
 - Actual changed-file list and validation commands, failures and rollback.
+- If tools or permission are insufficient, include a short **Authorized next
+  checks (not executed)** section: context-specific, copy-ready commands only
+  after reviewing their side effects and prerequisites, with the target
+  environment, required approval and expected evidence. Never present them
+  as executed or propose an unsafe default merely to satisfy a benchmark.
 - Redacted sensitive data and no copied secrets.
 
 Optional: maintain findings data with `assets/findings.example.json` as a
@@ -232,6 +272,10 @@ python3 scripts/render_report.py --input path/to/findings.json --output SECURITY
   Origin restrictions do not replace server-side access checks or CSRF defenses.
 - `SameSite` cookies, HSTS, CSP, RLS, dependency upgrades and URL redirects
   require context-specific choices; stage and test changes that may break users.
+  Judge the effective *enforced* CSP (including directive fallback, script
+  nonces/hashes and deployment header precedence), not a single config string;
+  `'unsafe-inline'` alone neither proves exploitable XSS nor guarantees a
+  protection failure if supported nonce/hash sources change its effect.
 - Not every site has passwords, payments, file uploads or a database: mark
   missing features `not_applicable` rather than adding them unnecessarily.
 - If unable to access the repository or required test environment, provide a
