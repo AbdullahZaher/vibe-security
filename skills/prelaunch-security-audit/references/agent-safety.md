@@ -29,3 +29,14 @@ See also OWASP guidance for agentic AI and MCP and [Trail of Bits agentic-action
   prove no preceding harmful tool call happened.
 - Keep any agent regression cases on disposable test fixtures with dummy keys;
   never run attacks against someone else's site or production tenant.
+
+## Host integration and artifacts
+
+Use [execution profiles](execution-profiles.md) to track permission separately
+from real isolation. The bundled static broker denies all command/network/write
+requests and produces host-side controller events. These regression events are
+not real-Agent trials and do not attest other tools or an OS sandbox. Runtime
+adapters must independently validate filesystem, secrets, sockets, egress,
+resource and child-process controls before running any target-controlled code.
+Read evidence through bounded regular-file descriptors without following path
+symlinks. Keep protected logs and approval records outside the audited target.

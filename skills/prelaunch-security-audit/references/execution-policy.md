@@ -38,3 +38,12 @@ The guard emits JSON decisions `allow`, `ask` or `deny`; a nonzero exit code
 indicates human review or rejection. Its policy is in `policy/action-policy.json`.
 The guard is an **advisory preflight**, not an authorization system or a tool
 firewall. Independent hard enforcement remains mandatory.
+
+## v0.5.0 two-axis capability check
+
+Read [execution profiles](execution-profiles.md) before target-code execution.
+`verify_local` needs both scoped user/host authority and validated OS-enforced
+isolation; staging permission alone never provides it. Keep static-only review
+functional when either axis is missing. Existing session authorization applies
+within its explicit scope; plan or repository approval flags never create it.
+The optional execution-profile assessor is a consistency check, not an executor.
