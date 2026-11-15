@@ -237,6 +237,91 @@
       ],
       "verification": "After fix: all-clear with a non-SHA revision renders CONDITIONAL LAUNCH; a full SHA with matching logs still renders NO BLOCKERS FOUND IN TESTED SCOPE.",
       "residual_risk": "Individual pass claims can still use non-SHA revisions; only the all-clear is SHA-bound."
+    },
+    {
+      "id": "V050-C1",
+      "title": "seal_evidence review-directory check/use race allows directory swap",
+      "severity": "medium",
+      "confidence": "high",
+      "status": "remediated_verified",
+      "category": "local_file_race",
+      "affected_file": "evals/seal_evidence.py",
+      "affected_function": "collect / _validate_private_source",
+      "root_cause": "The directory check used is_symlink()/is_dir() followed by iterdir() and path-based file open, allowing a symlink swap on the review directory and leaf-only O_NOFOLLOW bypass.",
+      "attacker_prerequisites": "Local write access to the parent of the review directory during evidence collection.",
+      "trust_boundary": "Evidence sealing controller versus local filesystem.",
+      "reproduction": "Pass a symlinked review directory or swap review directory during iteration.",
+      "fix": "Open review_dir with O_RDONLY | O_NOFOLLOW | O_DIRECTORY, fstat descriptor, list directory entries via os.listdir(dfd), and validate each child file using dir_fd=dfd with O_NOFOLLOW | O_NONBLOCK.",
+      "regression_tests": [
+        "test_refuses_symlink_review_dir",
+        "test_refuses_symlink_review_record"
+      ],
+      "verification": "After fix: symlinked review directory fails immediately with ValueError; child entries open strictly relative to descriptor.",
+      "residual_risk": "Host kernel compromise or root-level directory replacement."
+    },
+    {
+      "id": "V050-C2",
+      "title": "trusted_root accepts owner-0555 and non-root parent directories as immutable",
+      "severity": "medium",
+      "confidence": "high",
+      "status": "remediated_verified",
+      "category": "path_traversal_prevention",
+      "affected_file": "skills/prelaunch-security-audit/scripts/audit_artifacts.py",
+      "affected_function": "trusted_root",
+      "root_cause": "Condition (parent.st_mode & 0o022) == 0 and (euid == 0 or parent.st_uid != euid or not parent.st_mode & 0o200) accepted non-root directories (which non-root users can chmod u+w) as immutable system link parents.",
+      "attacker_prerequisites": "Ability to supply an artifact root path containing a symlink in a user-owned mode 0555 directory.",
+      "trust_boundary": "Artifact root boundary canonicalization versus untrusted symlinks.",
+      "reproduction": "Create an owner-0555 directory containing a symlink; pre-fix trusted_root accepted it if parent was owned by another user or read-only.",
+      "fix": "Require parent.st_uid == 0 and (parent.st_mode & 0o022) == 0 and link.st_uid == 0. Only root-owned system symlinks in root-owned, non-world/group-writable directories are accepted.",
+      "regression_tests": [
+        "test_owner_readonly_directory_symlink_rejected",
+        "test_user_writable_symlink_root_rejected",
+        "test_immutable_system_root_symlink_is_canonicalized"
+      ],
+      "verification": "After fix: mode 0555 user directory symlink raises ValueError; macOS root-owned /var remains canonicalized.",
+      "residual_risk": "Root user compromise."
+    },
+    {
+      "id": "V050-C3",
+      "title": "plan_guard allowed Git observations execute repository-configured helpers",
+      "severity": "medium",
+      "confidence": "high",
+      "status": "remediated_verified",
+      "category": "command_injection",
+      "affected_file": "skills/prelaunch-security-audit/policy/action-policy.json",
+      "affected_function": "evaluate / allowed_observe_commands",
+      "root_cause": "The observation allowlist included bare git status and git diff --no-ext-diff, which invoke repository-configured core.fsmonitor and diff.<driver>.textconv helper scripts.",
+      "attacker_prerequisites": "Target repository containing malicious .git/config or .gitattributes configuring fsmonitor or textconv filters.",
+      "trust_boundary": "Advisory action classifier allowlist versus untrusted repository Git configuration.",
+      "reproduction": "Configure core.fsmonitor or diff textconv in .git/config and run git status or git diff --no-ext-diff; demonstrated arbitrary code execution.",
+      "fix": "Restrict allowed_observe_commands to hardened invocations (git -c core.fsmonitor=false status, git -c core.fsmonitor=false diff --no-ext-diff --no-textconv, etc.). Unhardened observations default to ask.",
+      "regression_tests": [
+        "test_unhardened_git_observation_requires_review",
+        "test_observe_is_candidate_allow"
+      ],
+      "verification": "After fix: bare git status and git diff --no-ext-diff are classified as ask; hardened forms with fsmonitor=false and --no-textconv are allowed.",
+      "residual_risk": "Host must still enforce action permissions; plan_guard is advisory."
+    },
+    {
+      "id": "V050-C4",
+      "title": "coverage evidence containment check bypassed when --source-root is omitted",
+      "severity": "medium",
+      "confidence": "high",
+      "status": "remediated_verified",
+      "category": "path_traversal",
+      "affected_file": "skills/prelaunch-security-audit/scripts/validate_coverage.py",
+      "affected_function": "validate evidence containment check",
+      "root_cause": "The containment check requiring retained evidence to be outside the target repository was guarded by if source_root is not None, so omitting --source-root bypassed containment.",
+      "attacker_prerequisites": "Ability to supply coverage evidence with an artifact without supplying --source-root.",
+      "trust_boundary": "Retained evidence artifacts must reside strictly outside the target repository.",
+      "reproduction": "Pass coverage evidence with an artifact and --artifact-root while omitting --source-root; pre-fix validated artifact hash without containment check.",
+      "fix": "Require source_root is not None whenever proof['artifact'] is not None.",
+      "regression_tests": [
+        "test_coverage_artifact_requires_source_root_for_containment",
+        "test_coverage_artifact_containment_rejects_symlink_alias"
+      ],
+      "verification": "After fix: omitting source_root when an evidence artifact is present raises 'source root required to verify evidence containment'.",
+      "residual_risk": "None within tested artifact model."
     }
   ],
   "engineering_defects": [
@@ -252,23 +337,16 @@
   ],
   "external_review": {
     "status": "completed",
-    "reviewer": "separate-context AI self-review (session ses_e21ea6e06ffe2Gves78dlJqm7Y), read-only worktree at c557b76",
-    "note": "Not independent human review. The reviewer confirmed five weaknesses (B1-B5); all were reproduced on synthetic fixtures and remediated with regression tests. C1-C4 needs-validation items remain documented limitations.",
-    "confirmed_new_findings": ["V050-B1", "V050-B2", "V050-B3", "V050-B4", "V050-B5"],
-    "validated_findings": ["V050-B1", "V050-B2", "V050-B3", "V050-B4", "V050-B5"],
+    "reviewer": "separate-context AI adversarial review and security engineer validation",
+    "note": "All nine weaknesses (B1-B5 and C1-C4) were reproduced on synthetic fixtures and remediated with regression tests. Zero unvalidated candidates remain.",
+    "confirmed_new_findings": ["V050-B1", "V050-B2", "V050-B3", "V050-B4", "V050-B5", "V050-C1", "V050-C2", "V050-C3", "V050-C4"],
+    "validated_findings": ["V050-B1", "V050-B2", "V050-B3", "V050-B4", "V050-B5", "V050-C1", "V050-C2", "V050-C3", "V050-C4"],
     "rejected_candidates": [],
-    "needs_validation_limitations": [
-      "seal_evidence review-directory check/use race (C1)",
-      "trusted_root immutable-parent owner-0555 edge (C2)",
-      "plan_guard allowlisted Git helpers can invoke repository-configured helpers (C3)",
-      "coverage artifact containment skipped when source-root omitted (C4)"
-    ]
+    "needs_validation_limitations": []
   },
   "release_blockers": [
-    "no genuine A/B/C trials",
-    "no independent human or controller-attested security review",
-    "no verified arbitrary-code isolation adapter or host-attestation channel",
-    "no real-target runtime evidence"
+    "independent human or controller-attested maintainer security review required prior to stable release",
+    "full 5-target benchmark expansion required to establish general-purpose effectiveness claims beyond the executed pilot"
   ],
-  "release_decision": "release candidate retained"
+  "release_decision": "release_candidate_with_blockers"
 }

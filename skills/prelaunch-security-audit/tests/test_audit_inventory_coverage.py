@@ -224,6 +224,29 @@ class ArtifactTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'retained evidence must be outside'):
             validate_coverage(data, self.inventory, alias, self.repo)
 
+    def test_coverage_artifact_requires_source_root_for_containment(self):
+        # Omitting source_root must not bypass evidence containment when an artifact is present.
+        evidence = self.root / 'artifact.json'
+        evidence.write_bytes(b'{}')
+        inv = deepcopy(self.inventory)
+        inv['units'][0]['source']['status'] = 'not_verified'
+        inv['units'][0]['source']['sha256'] = ''
+        inv['units'][0]['discovery_status'] = 'not_verified'
+        inv['units'][0]['id'] = inventory_id('synthetic', inv['units'][0])
+        data = deepcopy(self.ledger)
+        data['units'][0]['inventory_ids'] = [inv['units'][0]['id']]
+        data['units'][0]['status'] = 'unassessed'
+        data['units'][0]['unit_id'] = coverage_id(data['units'][0])
+        data['evidence'][0]['inventory_ids'] = [inv['units'][0]['id']]
+        data['evidence'][0]['unit_id'] = data['units'][0]['unit_id']
+        data['units'][0]['evidence_ids'] = [data['evidence'][0]['id']]
+        data['evidence'][0]['source_refs'][0]['status'] = 'not_verified'
+        data['evidence'][0]['source_refs'][0]['sha256'] = ''
+        data['evidence'][0]['artifact'] = {'path': 'artifact.json',
+                                           'sha256': hashlib.sha256(b'{}').hexdigest()}
+        with self.assertRaisesRegex(ValueError, 'source root required to verify evidence containment'):
+            validate_coverage(data, inv, source_root=None, artifact_root=self.root)
+
     def test_frozen_source_rejects_git_alternates(self):
         # An alternate object store lets the audit read blobs from another repo.
         alt = self.repo / '.git' / 'objects' / 'info'

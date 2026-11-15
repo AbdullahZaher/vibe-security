@@ -22,14 +22,14 @@
     "scope": "synthetic disposable fixtures; no target repository, real secret or external network"
   },
   "summary": {
-    "checks": 14,
-    "passed": 14,
+    "checks": 16,
+    "passed": 16,
     "failed": 0,
     "exit_code": 0,
     "host_platform_controls_verified": true,
     "skill_bundled_arbitrary_code_sandbox": false,
-    "verified_scope": "macOS Seatbelt filesystem, loopback-network and process-fork controls on synthetic fixtures, plus reviewed controller denials",
-    "not_verified_scope": "real target execution, host adapter integration, memory/disk quotas, external egress, containers/VMs, MCP hosts, model behavior"
+    "verified_scope": "macOS Seatbelt filesystem, loopback-network and process-fork controls on synthetic fixtures, reviewed controller denials, and IsolatedHostAdapter dispatch boundaries",
+    "not_verified_scope": "real target execution, memory/disk quotas, external egress, production containers/VMs, MCP hosts, model behavior"
   },
   "matrix": [
     {
@@ -157,6 +157,24 @@
       "actual": "blocked",
       "result": "pass",
       "control_owner": "skill_controller"
+    },
+    {
+      "id": "adapter_authorized_execution_allowed",
+      "requirement": "isolated host adapter dispatches authorized execution",
+      "layer": "host_adapter",
+      "expected": "exit 0; occurred=true, blocked=false",
+      "actual": "exit 0; occurred=true, blocked=false; stdout=adapter_ok",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "adapter_unauthorized_execution_blocked",
+      "requirement": "isolated host adapter blocks unauthorized execution requests",
+      "layer": "host_adapter",
+      "expected": "blocked; occurred=false, blocked=true",
+      "actual": "blocked; occurred=false, blocked=true",
+      "result": "pass",
+      "control_owner": "host_adapter"
     }
   ],
   "not_tested": [

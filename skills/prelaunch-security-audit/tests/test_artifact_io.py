@@ -50,6 +50,21 @@ class ArtifactIOTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             trusted_root(self.root / 'link')
 
+    def test_owner_readonly_directory_symlink_rejected(self):
+        # A non-root directory with mode 0555 is not immutable: its owner can chmod it.
+        container = self.root / 'readonly_container'
+        container.mkdir()
+        real = self.root / 'real_dir'
+        real.mkdir()
+        link = container / 'link'
+        link.symlink_to(real, target_is_directory=True)
+        container.chmod(0o555)
+        try:
+            with self.assertRaisesRegex(ValueError, 'mutable symlink'):
+                trusted_root(link)
+        finally:
+            container.chmod(0o755)
+
     def test_bounded_child_output_stops_before_unbounded_allocation(self):
         # Executes only this fixed, reviewed stdlib expression; no target code.
         with self.assertRaisesRegex(ValueError, 'exceeds limit'):

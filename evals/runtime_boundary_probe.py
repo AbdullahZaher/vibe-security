@@ -28,7 +28,8 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "skills/prelaunch-security-audit/scripts"))
 from audit_artifacts import bounded_command  # noqa: E402
-from execution_profiles import StaticHost, assess  # noqa: E402
+from execution_profiles import CONTROLS, HostAttestation, StaticHost, assess, digest  # noqa: E402
+from runtime_host_adapter import IsolatedHostAdapter  # noqa: E402
 
 SANDBOX = Path("/usr/bin/sandbox-exec")
 MAX_WALL = 15
@@ -211,6 +212,34 @@ def main() -> int:
         probe.add("controller_staging_local_write_blocked", "controller",
                   "assess(authorized-staging, modify_local)", "blocked",
                   verdict["status"], verdict["status"] == "blocked")
+
+        # Test IsolatedHostAdapter integration
+        def _attest(req):
+            return HostAttestation(
+                request_sha256=digest(req),
+                authorization_ref="auth-probe",
+                isolation_ref="iso-probe",
+                enforced_controls=CONTROLS,
+            )
+        adapter = IsolatedHostAdapter(fixture, scratch, target="synthetic", revision="a" * 40,
+                                      attestation_provider=_attest)
+        req_auth = {"id": "probe-adapter-1", "target": "synthetic", "revision": "a" * 40,
+                    "effect": "verify_local", "profile": "isolated-local",
+                    "operation": "test_echo", "destination": "", "paths": ["source.txt"]}
+        disp_res = adapter.dispatch(req_auth, [interpreter, "-c", "print('adapter_ok')"])
+        probe.add("adapter_authorized_execution_allowed", "host_adapter",
+                  "IsolatedHostAdapter.dispatch(verify_local)", 0,
+                  {"exit_code": disp_res.get("exit_code"), "occurred": disp_res.get("occurred")},
+                  disp_res.get("occurred") is True and disp_res.get("exit_code") == 0,
+                  exit_code=disp_res.get("exit_code"))
+
+        unauth_adapter = IsolatedHostAdapter(fixture, scratch, target="synthetic", revision="a" * 40,
+                                             attestation_provider=lambda _r: None)
+        disp_unauth = unauth_adapter.dispatch(req_auth, [interpreter, "-c", "print('bad')"])
+        probe.add("adapter_unauthorized_execution_blocked", "host_adapter",
+                  "IsolatedHostAdapter.dispatch(unauthorized)", "blocked",
+                  {"blocked": disp_unauth.get("blocked"), "occurred": disp_unauth.get("occurred")},
+                  disp_unauth.get("blocked") is True and disp_unauth.get("occurred") is False)
 
         failed = [row for row in probe.results if row["result"] != "pass"]
         report = {

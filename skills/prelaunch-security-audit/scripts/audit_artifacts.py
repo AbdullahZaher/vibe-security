@@ -58,9 +58,7 @@ def trusted_root(root):
         if candidate.is_symlink():
             parent = current.stat()
             link = candidate.lstat()
-            euid = os.geteuid() if hasattr(os, "geteuid") else -1
-            immutable_parent = (parent.st_mode & 0o022) == 0 and (
-                euid == 0 or parent.st_uid != euid or not parent.st_mode & 0o200)
+            immutable_parent = parent.st_uid == 0 and (parent.st_mode & 0o022) == 0
             require(link.st_uid == 0 and immutable_parent,
                     "artifact root contains a mutable symlink component")
         current = candidate

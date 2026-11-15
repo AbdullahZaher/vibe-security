@@ -111,6 +111,12 @@ class TestEvidenceSealing(unittest.TestCase):
         with self.assertRaises(ValueError):
             collect(self.trace, self.review)
 
+    def test_refuses_symlink_review_dir(self):
+        dir_link = self.root / "review_link"
+        dir_link.symlink_to(self.review, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, "review_dir must be an existing directory, not a symlink"):
+            collect(self.trace, dir_link)
+
     def test_private_source_reader_never_follows_links_or_fifos(self):
         source = self.root / "source.txt"
         source.write_text("x")
