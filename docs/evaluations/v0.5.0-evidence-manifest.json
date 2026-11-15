@@ -1,0 +1,129 @@
+{
+  "schema": "v0.5.0-evidence-manifest-v1",
+  "generated_at": "2026-11-15T20:08:08Z",
+  "repository": "https://github.com/AbdullahZaher/vibe-security",
+  "branch": "fix/v050-independent-release-blockers-20261115",
+  "pull_request": "https://github.com/AbdullahZaher/vibe-security/pull/3",
+  "git": {
+    "commit": "e9a50054b1ba058998dcb2f47a69a27001d90ac5",
+    "tree": "4b0f13270fa92395a2f1e5bd96d857633ac80210",
+    "skill_tree": "3242bf0bf624641e49113cdd5ee9a8b837440726",
+    "baseline_commit": "0f2237887448686a8e2479e360a390c6abe2529c"
+  },
+  "host": {
+    "hostname": "MacBook-Pro-von-Abdullah.local",
+    "os": "macOS 15.7.3",
+    "build": "24G419",
+    "kernel": "24.6.0",
+    "arch": "arm64",
+    "python": "3.13.7"
+  },
+  "benchmark_targets": {
+    "target1_multitenant_saas": "4a320c495db407794be25bea811a26c772d10dd9",
+    "target2_rest_graphql": "f1d2f870f75755bb184c9fd6e9591da11aa4bc2d",
+    "target3_webhooks_queue": "fadebd8f047817ace4fef434a51905243b00db9c",
+    "target4_ai_mcp_rag": "e39f38b7a640f8cafa93ed7727c0f379eedd17be",
+    "target5_secure_control": "7037e920cab1d1ebe3d2c7bf490d7237347e14fa"
+  },
+  "evaluation_sessions": {
+    "Condition_A_Baseline": {
+      "session_id": "7ca831af-1bbb-418b-8f19-032b7859552b",
+      "model": "Gemini 3.8 Flash (High)",
+      "role": "Baseline Security Auditor",
+      "treatment": "No security skill"
+    },
+    "Condition_B_v040": {
+      "session_id": "2a7e815a-17df-402f-baf6-f2fa03337cdc",
+      "model": "Gemini 3.8 Flash (High)",
+      "role": "v0.4.0 Security Auditor",
+      "treatment": "prelaunch-security-audit v0.4.0-rc2 (commit 60d985a)"
+    },
+    "Condition_C_v050": {
+      "session_id": "31922005-cc62-49b8-96a7-bd56b5fbcbd1",
+      "model": "Gemini 3.8 Flash (High)",
+      "role": "v0.5.0 Security Auditor",
+      "treatment": "prelaunch-security-audit v0.5.0-rc1"
+    }
+  },
+  "historical_discrepancy_reconciliation": {
+    "target_file": "docs/security/v0.5.0-runtime-test-matrix.json",
+    "historical_recorded_commit": "8e507e253c870f5d8e68f4b8c519435b1dd902e0",
+    "historical_recorded_timestamp": "2026-11-15T21:00:00Z",
+    "discrepancy_analysis": "Commit 8e507e2 was authored at 17:39:09 UTC (20:39:09 +0300). Subsequent test additions up to ad3ac23 occurred between 21:04 and 21:56 +0300. The hardcoded 21:00:00Z timestamp reflects timezone confusion between +0300 and UTC while reviewed_revision was not updated. File is preserved verbatim as historical developer evidence, superseded for v0.5.0 certification by docs/security/v0.5.0-remediation-verification-matrix.json.",
+    "action_taken": "Preserved historical file verbatim; bound new verified evidence to exact commit SHA."
+  },
+  "artifact_digests": {
+    "CHANGELOG.md": {
+      "sha256": "3940f55bf3d97c25d142e59b104906b0f5c7cf04498d7791133a282f2fa65a91",
+      "bytes": 7475
+    },
+    "skills/prelaunch-security-audit/SKILL.md": {
+      "sha256": "beed1112d1d0f5611fb7b9aeefbe535a683b4abe028a5b3793930c9ef3cc8fe4",
+      "bytes": 19334
+    },
+    "skills/prelaunch-security-audit/scripts/runtime_host_adapter.py": {
+      "sha256": "87dc7e4845acd24a73182b778b73719bc17bd6889e350e00db71b43d2a49922a",
+      "bytes": 23972
+    },
+    "skills/prelaunch-security-audit/scripts/execution_profiles.py": {
+      "sha256": "bb995fe43a0d53ebc51fc81fd7e4b26cc6c1bcbcc1798a5896d81b86318199ee",
+      "bytes": 10731
+    },
+    "skills/prelaunch-security-audit/scripts/render_report.py": {
+      "sha256": "20cd5f618b7a67d042774e77b9384e1bd6ca882dde09a66d76f3179358e50f76",
+      "bytes": 24626
+    },
+    "skills/prelaunch-security-audit/tests/test_independent_release_blockers.py": {
+      "sha256": "d2e2e993320a504fdc9b0fd3d87627c9ee8ae4e74e63d082f9703244517a8b97",
+      "bytes": 8040
+    },
+    "skills/prelaunch-security-audit/tests/test_runtime_host_adapter.py": {
+      "sha256": "01a951b7c0adc7be363cd79c018d3bedc7f18f23bc91327223172cc0d8b90178",
+      "bytes": 54722
+    },
+    "evals/macos_host_verifier.py": {
+      "sha256": "e9598f60577419ebe277d81573c08677725fd459c8b618bd700a7dc26577ac3c",
+      "bytes": 27778
+    },
+    "evals/release_readiness_gate.py": {
+      "sha256": "9d363843baed27805f745edeb53a93e564368bcd32bbe8a828146ac9564109b0",
+      "bytes": 4079
+    },
+    "evals/runtime_boundary_probe.py": {
+      "sha256": "5e889c6e9f2d4f61b9893425396695b5a6528cd4e00cf023a4aa7b70927945e3",
+      "bytes": 15144
+    },
+    "evals/benchmark_5p_ground_truth.json": {
+      "sha256": "d10d512862d5fdbe49f8db9d7310cdeb8a66e72cfbef27719c7ccccb203d9ff0",
+      "bytes": 13625
+    },
+    "docs/security/v0.5.0-remediation-verification-matrix.json": {
+      "sha256": "1b357dd3d36d6cc2c189aef1b06e75ecb3b18f7c41ad4007768a8b8e31a97a59",
+      "bytes": 8556
+    },
+    "docs/security/v0.5.0-macos-host-verification.md": {
+      "sha256": "f74a7ac6ae200a9ad79aff2a42e10ac092cd445d1c5610d51c97f599b029e397",
+      "bytes": 13371
+    },
+    "docs/evaluations/v0.5.0-abc-metrics.json": {
+      "sha256": "1be764889aabc21405afb50d033faa8b49b2708a360c420edfa0ea9aa4739b8f",
+      "bytes": 5664
+    },
+    "docs/evaluations/v0.5.0-final-abc-evaluation.md": {
+      "sha256": "0c74563e658adebe41f028a25024c524cb4d882fb4f4653a05325b17773e6c35",
+      "bytes": 11752
+    },
+    "docs/security/v0.5.0-final-security-certification.md": {
+      "sha256": "ec92907d4950d7631889b0391c86e82b94f1313643dbff527e16d49723e5d14f",
+      "bytes": 13451
+    },
+    "docs/release/v0.5.0-release-readiness-checklist.md": {
+      "sha256": "ac5df97dd7dc8be0b964deb1bcf767e71c0241758f8d5fa6dd199fd521abe330",
+      "bytes": 9009
+    },
+    "docs/security/v0.5.0-runtime-test-matrix.json": {
+      "sha256": "212773edf1966a68333f6a467b0444314bd0f015084af492f42df4ca2d8e820f",
+      "bytes": 16847
+    }
+  }
+}

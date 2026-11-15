@@ -1,3 +1,14 @@
+## v0.5.0-rc1 — independent security remediation & release verification (2026-11-15, PR #3)
+
+- **Fail-Closed Runtime Isolation (IR-002, IR-003, IR-005):** Disabled untrusted subprocess execution in `IsolatedHostAdapter.dispatch()`. Empirically verified POSIX `setsid()` escape limitation on macOS Seatbelt; documented that Darwin `sandbox-exec` lacks cgroup resource quotas and process group containment. Narrowed capability scope strictly to allowlisted static reads via `StaticHost`.
+- **Durable Atomic ApprovalStore (IR-001):** Hardened single-use approval persistence against TOCTOU and symlinks using directory file descriptor pinning (`dir_fd`, `O_NOFOLLOW`), permissions `0o700`/`0o600`, cross-process `fcntl.flock(LOCK_EX)`, atomic replacement via `O_EXCL`, and fail-closed corruption detection. Prohibited unauthorized approval history resets (`clear()` raises `PermissionError`).
+- **Mandatory ExecutionSpec Binding (IR-004):** Enforced mandatory cryptographic binding of commands, targets, revisions, timeouts, and sanitized environment keys to `spec_sha256`. Rejected observe and staging requests from subprocess dispatch.
+- **Reporting Trust Boundary & Gate Enforcement (IR-010):** Enforced that unauthenticated JSON PASS logs cannot produce a positive "no blockers found in tested scope" all-clear in `render_report.py` (capped at "conditional launch"). Implemented `evals/release_readiness_gate.py` returning exit 2 (fail-closed) against developer claims.
+- **Telemetry & Evidence Privacy (IR-009):** Scrubbed cleartext query tokens, raw file paths, and command arguments from host events, retaining SHA256 digests and counts.
+- **macOS Host Verification Suite:** Added `evals/macos_host_verifier.py` executing 10 mandatory negative security tests on macOS 15.7.3 arm64; all 10 tests passed (100% pass rate). Generated `docs/security/v0.5.0-macos-host-verification.md` and `docs/security/v0.5.0-remediation-verification-matrix.json`.
+- **Benchmark Integrity & Evidence Manifest:** Completed independent Ground Truth audit for 5 target repositories (8 vulnerabilities, 12 negative controls, 20 entry points). Resolved historical runtime matrix timestamp discrepancy and authored `docs/evaluations/v0.5.0-evidence-manifest.json` binding 15 artifacts with cryptographic digests.
+- **Definitive Release Decision: NO-GO:** Formally recorded `NO-GO` verdict in `docs/security/v0.5.0-final-security-certification.md` and `docs/release/v0.5.0-release-readiness-checklist.md`. Stable release remains blocked pending independent human maintainer approval and completion of the full 45-trial evaluation matrix.
+
 ## v0.5.0-rc1 — engineering candidate (2026-11-14, feature branch)
 
 - Add strict, revision-bound inventory and coverage schemas/validators with
