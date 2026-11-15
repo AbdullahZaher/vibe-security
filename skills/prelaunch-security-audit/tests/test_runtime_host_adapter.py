@@ -9,6 +9,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -361,6 +362,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.assertTrue(res["blocked"])
         self.assertFalse(res["occurred"])
 
+    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
     def test_r02_replay_attack_rejected(self):
         """R-02: Replaying an already-dispatched approval is blocked."""
         adapter = IsolatedHostAdapter(
@@ -385,6 +387,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.assertFalse(res2["occurred"])
         self.assertIn("authorization replay rejected", res2["reason"])
 
+    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
     def test_r02_execution_spec_telemetry_recorded(self):
         """R-02: Immutable ExecutionSpec and its digest are stored in telemetry events."""
         adapter = IsolatedHostAdapter(
@@ -639,6 +642,27 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
             self.assertIn("USER_SITE=1", res["stdout"])
         finally:
             del os.environ["TEST_SECRET_VAR"]
+
+    def test_unsupported_host_sandbox_fails_closed(self):
+        """When SANDBOX_EXEC does not exist, dispatch fails closed."""
+        with patch("runtime_host_adapter.SANDBOX_EXEC", Path("/nonexistent/sandbox-exec")):
+            adapter = IsolatedHostAdapter(
+                self.source_root, self.scratch_root,
+                target=self.target, revision=self.revision,
+                attestation_provider=self._make_attestation
+            )
+            cmd = [sys.executable, "-c", "print(1)"]
+            req = {
+                "id": "unsupported-1", "target": self.target, "revision": self.revision,
+                "effect": "verify_local", "profile": "isolated-local",
+                "operation": "test", "destination": "", "paths": ["src"],
+                "command": cmd,
+            }
+            res = adapter.dispatch(req, cmd)
+            self.assertTrue(res["blocked"])
+            self.assertFalse(res["occurred"])
+            self.assertIn("host sandbox facility", res["reason"])
+
 
 
 if __name__ == "__main__":
