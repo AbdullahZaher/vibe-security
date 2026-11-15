@@ -1,4 +1,13 @@
-## v0.5.0-rc1 — independent security remediation & release verification (2026-11-15, PR #3)
+## v0.5.0-rc1 — independent release assurance corrections (PR #3, not a stable release)
+
+- Correct GitHub Actions run `43756365960` totals: **286 tests, 254 passed, 32 skipped, 0 failed** in unit/contract; separate MCP integration passed and live model job skipped.
+- Correct recorded Git tree `cb9d7632361ed656c0bfe9bcb6ed09e4059e1283` for pre-correction commit `b8901c6860ca483d730cdeeb945025bb98792d45`; Skill subtree `3242bf0bf624641e49113cdd5ee9a8b837440726`.
+- Preserve original independent security finding IDs `IR-001`..`IR-015` in `docs/security/v0.5.0-original-findings-crosswalk.json`; earlier certificate reused IDs incorrectly.
+- Clarify that 3 pilot A/B/C agent sessions are **not 45 independently authenticated isolated trials**, and macOS matrix is developer-reported evidence, not independent human certification.
+- Fix release rollback command syntax; prohibit removing the durable approval consumption ledger to revoke authorizations.
+- Stable remains **NO-GO**; no merge, tag or publication authorized.
+
+## v0.5.0-rc1 — developer-remediation and release-evidence draft (2026-11-15, PR #3)
 
 - **Fail-Closed Runtime Isolation (IR-002, IR-003, IR-005):** Disabled untrusted subprocess execution in `IsolatedHostAdapter.dispatch()`. Empirically verified POSIX `setsid()` escape limitation on macOS Seatbelt; documented that Darwin `sandbox-exec` lacks cgroup resource quotas and process group containment. Narrowed capability scope strictly to allowlisted static reads via `StaticHost`.
 - **Durable Atomic ApprovalStore (IR-001):** Hardened single-use approval persistence against TOCTOU and symlinks using directory file descriptor pinning (`dir_fd`, `O_NOFOLLOW`), permissions `0o700`/`0o600`, cross-process `fcntl.flock(LOCK_EX)`, atomic replacement via `O_EXCL`, and fail-closed corruption detection. Prohibited unauthorized approval history resets (`clear()` raises `PermissionError`).
@@ -6,7 +15,7 @@
 - **Reporting Trust Boundary & Gate Enforcement (IR-010):** Enforced that unauthenticated JSON PASS logs cannot produce a positive "no blockers found in tested scope" all-clear in `render_report.py` (capped at "conditional launch"). Implemented `evals/release_readiness_gate.py` returning exit 2 (fail-closed) against developer claims.
 - **Telemetry & Evidence Privacy (IR-009):** Scrubbed cleartext query tokens, raw file paths, and command arguments from host events, retaining SHA256 digests and counts.
 - **macOS Host Verification Suite:** Added `evals/macos_host_verifier.py` executing 10 mandatory negative security tests on macOS 15.7.3 arm64; all 10 tests passed (100% pass rate). Generated `docs/security/v0.5.0-macos-host-verification.md` and `docs/security/v0.5.0-remediation-verification-matrix.json`.
-- **Benchmark Integrity & Evidence Manifest:** Completed independent Ground Truth audit for 5 target repositories (8 vulnerabilities, 12 negative controls, 20 entry points). Resolved historical runtime matrix timestamp discrepancy and authored `docs/evaluations/v0.5.0-evidence-manifest.json` binding 15 artifacts with cryptographic digests.
+- **Benchmark Integrity & Evidence Manifest:** Documented developer-reported Ground Truth audit for 5 target repositories (8 vulnerabilities, 12 negative controls, 20 entry points). Recorded a proposed explanation for the historical runtime matrix timestamp discrepancy and authored `docs/evaluations/v0.5.0-evidence-manifest.json` binding 18 historical artifacts (new corrected manifest will supersede this scope) with cryptographic digests.
 - **Definitive Release Decision: NO-GO:** Formally recorded `NO-GO` verdict in `docs/security/v0.5.0-final-security-certification.md` and `docs/release/v0.5.0-release-readiness-checklist.md`. Stable release remains blocked pending independent human maintainer approval and completion of the full 45-trial evaluation matrix.
 
 ## v0.5.0-rc1 — engineering candidate (2026-11-14, feature branch)
