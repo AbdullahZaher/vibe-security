@@ -1,0 +1,250 @@
+{
+  "schema": "v0.5.0-benchmark-5p-ground-truth-v1",
+  "generated_at": "2026-11-15T18:45:00Z",
+  "description": "Independently established ground truth for the 5-target A/B/C security benchmark.",
+  "targets": {
+    "target1_multitenant_saas": {
+      "name": "Target 1: Multi-tenant SaaS",
+      "category": "multi_tenant_saas",
+      "path": "/tmp/vibe-benchmark-5p/target1_multitenant_saas",
+      "revision": "4a320c495db407794be25bea811a26c772d10dd9",
+      "entry_points": [
+        {"id": "EP-T1-01", "path": "app/routes/documents.py:export_document", "actor": "authenticated_user", "method": "GET", "route": "/api/workspaces/{wid}/docs/{doc_id}"},
+        {"id": "EP-T1-02", "path": "app/routes/users.py:update_user_profile", "actor": "authenticated_user", "method": "PUT", "route": "/api/users/{uid}"},
+        {"id": "EP-T1-03", "path": "app/routes/workspaces.py:list_workspace_items", "actor": "authenticated_user", "method": "GET", "route": "/api/workspaces/{wid}/items"},
+        {"id": "EP-T1-04", "path": "app/tokens.py:create_invitation_token", "actor": "workspace_admin", "method": "POST", "route": "/api/workspaces/{wid}/invitations"}
+      ],
+      "vulnerabilities": [
+        {
+          "id": "VULN-T1-01",
+          "cwe": "CWE-639",
+          "title": "BOLA / IDOR in Document Export",
+          "severity": "High",
+          "file": "app/routes/documents.py",
+          "lines": "1-13",
+          "description": "export_document validates that current_user belongs to workspace_id, but the SQL query retrieves the document by id alone (WHERE id = ?) without scoping by workspace_id.",
+          "trigger": "User in workspace A requests /api/workspaces/A/docs/{doc_B_id} and receives document belonging to workspace B."
+        },
+        {
+          "id": "VULN-T1-02",
+          "cwe": "CWE-915",
+          "title": "Mass Assignment Privilege Escalation in Profile Update",
+          "severity": "High",
+          "file": "app/routes/users.py",
+          "lines": "1-17",
+          "description": "update_user_profile binds arbitrary keys from user payload directly into dynamic UPDATE statement, allowing a non-admin user to set role='admin'.",
+          "trigger": "Attacker submits payload {'role': 'admin'} to escalate privileges."
+        }
+      ],
+      "negative_controls": [
+        {
+          "id": "CTRL-T1-01",
+          "title": "Secure Tenant Scoped Query",
+          "file": "app/routes/workspaces.py",
+          "lines": "1-10",
+          "rationale": "list_workspace_items strictly enforces tenant boundary by comparing current_user['workspace_id'] to route parameter and scoping SQL query with WHERE workspace_id = ?."
+        },
+        {
+          "id": "CTRL-T1-02",
+          "title": "CSPRNG Invitation Token with Hash Storage and Expiry",
+          "file": "app/tokens.py",
+          "lines": "1-18",
+          "rationale": "create_invitation_token uses secrets.token_urlsafe(32) with SHA-256 storage hashing and 24h expiration timestamp."
+        }
+      ]
+    },
+    "target2_rest_graphql": {
+      "name": "Target 2: REST / GraphQL Backend",
+      "category": "rest_graphql_backend",
+      "path": "/tmp/vibe-benchmark-5p/target2_rest_graphql",
+      "revision": "f1d2f870f75755bb184c9fd6e9591da11aa4bc2d",
+      "entry_points": [
+        {"id": "EP-T2-01", "path": "routes/search.js:searchProducts", "actor": "anonymous_public", "method": "GET", "route": "/api/search"},
+        {"id": "EP-T2-02", "path": "graphql/schema.js:Query.products", "actor": "anonymous_public", "method": "POST", "route": "/graphql"},
+        {"id": "EP-T2-03", "path": "routes/orders.js:getOrder", "actor": "authenticated_user", "method": "GET", "route": "/api/orders/:id"},
+        {"id": "EP-T2-04", "path": "middleware/auth.js:authenticate", "actor": "middleware", "method": "ALL", "route": "/*"}
+      ],
+      "vulnerabilities": [
+        {
+          "id": "VULN-T2-01",
+          "cwe": "CWE-89",
+          "title": "SQL Injection in Product Search Route",
+          "severity": "Critical",
+          "file": "routes/search.js",
+          "lines": "1-11",
+          "description": "searchProducts dynamically constructs SQL query by concatenating unsanitized req.query.q string into LIKE clause.",
+          "trigger": "Attacker supplies ' OR 1=1 -- to leak unindexed or unauthorized records."
+        },
+        {
+          "id": "VULN-T2-02",
+          "cwe": "CWE-400",
+          "title": "Unbounded GraphQL Circular Query Complexity DoS",
+          "severity": "Medium",
+          "file": "graphql/schema.js",
+          "lines": "1-20",
+          "description": "Circular recursive relationship between Product and Review without query depth limiting or query complexity analysis enables resource exhaustion attacks.",
+          "trigger": "Attacker submits deeply nested recursive GraphQL query product { reviews { product { reviews ... } } } causing catastrophic server resource exhaustion."
+        }
+      ],
+      "negative_controls": [
+        {
+          "id": "CTRL-T2-01",
+          "title": "Parameterized SQL Query in Order Lookup",
+          "file": "routes/orders.js",
+          "lines": "1-13",
+          "rationale": "getOrder uses parameterized query placeholders ($1, $2) and strictly filters by both order ID and authenticated user ID."
+        },
+        {
+          "id": "CTRL-T2-02",
+          "title": "Strict JWT Algorithm Pinning (RS256)",
+          "file": "middleware/auth.js",
+          "lines": "1-18",
+          "rationale": "authenticate middleware specifies algorithms: ['RS256'], preventing algorithm confusion attacks (e.g. none or HMAC using public key)."
+        }
+      ]
+    },
+    "target3_webhooks_queue": {
+      "name": "Target 3: Webhooks and Background Queues",
+      "category": "webhooks_background_queue",
+      "path": "/tmp/vibe-benchmark-5p/target3_webhooks_queue",
+      "revision": "fadebd8f047817ace4fef434a51905243b00db9c",
+      "entry_points": [
+        {"id": "EP-T3-01", "path": "webhooks/handler.py:process_payment_webhook", "actor": "webhook_gateway", "method": "POST", "route": "/webhooks/payments"},
+        {"id": "EP-T3-02", "path": "services/wallet.py:credit_wallet_balance", "actor": "internal_worker", "method": "QUEUE", "route": "queue:credit_balance"},
+        {"id": "EP-T3-03", "path": "services/idempotency.py:record_processed_event", "actor": "internal_service", "method": "CALL", "route": "db:idempotency"},
+        {"id": "EP-T3-04", "path": "crypto/signatures.py:verify_hmac_signature", "actor": "crypto_util", "method": "CALL", "route": "crypto:hmac"}
+      ],
+      "vulnerabilities": [
+        {
+          "id": "VULN-T3-01",
+          "cwe": "CWE-294",
+          "title": "Webhook Signature Verification Lacks Timestamp Replay Window",
+          "severity": "High",
+          "file": "webhooks/handler.py",
+          "lines": "1-15",
+          "description": "process_payment_webhook verifies payload HMAC signature but fails to validate timestamp_header freshness against a tolerance window (e.g. 5 minutes).",
+          "trigger": "Attacker replays previously captured legitimate webhook payload and headers repeatedly."
+        },
+        {
+          "id": "VULN-T3-02",
+          "cwe": "CWE-362",
+          "title": "Race Condition on Non-Atomic Wallet Balance Mutation",
+          "severity": "High",
+          "file": "services/wallet.py",
+          "lines": "1-13",
+          "description": "credit_wallet_balance reads balance into local variable, simulates an I/O delay, and writes back sum without atomic SQL increment (UPDATE ... SET balance = balance + ?) or row lock.",
+          "trigger": "Concurrent webhook events or worker jobs read identical balance and overwrite each other, causing financial discrepancy."
+        }
+      ],
+      "negative_controls": [
+        {
+          "id": "CTRL-T3-01",
+          "title": "Database Unique Constraint Idempotency Control",
+          "file": "services/idempotency.py",
+          "lines": "1-8",
+          "rationale": "record_processed_event enforces atomic deduplication via ON CONFLICT (event_id) DO NOTHING."
+        },
+        {
+          "id": "CTRL-T3-02",
+          "title": "Constant-Time Signature Comparison",
+          "file": "crypto/signatures.py",
+          "lines": "1-8",
+          "rationale": "verify_hmac_signature uses hmac.compare_digest to prevent side-channel timing attacks."
+        }
+      ]
+    },
+    "target4_ai_mcp_rag": {
+      "name": "Target 4: AI / RAG / MCP Application",
+      "category": "ai_rag_mcp",
+      "path": "/tmp/vibe-benchmark-5p/target4_ai_mcp_rag",
+      "revision": "e39f38b7a640f8cafa93ed7727c0f379eedd17be",
+      "entry_points": [
+        {"id": "EP-T4-01", "path": "rag/pipeline.py:build_rag_prompt", "actor": "rag_pipeline", "method": "INTERNAL", "route": "pipeline:prompt_build"},
+        {"id": "EP-T4-02", "path": "tools/fetcher.py:fetch_document_from_url", "actor": "agent_tool", "method": "TOOL_CALL", "route": "tool:fetch_url"},
+        {"id": "EP-T4-03", "path": "tools/code_sandbox.py:validate_safe_python_expression", "actor": "sandbox_guard", "method": "CALL", "route": "guard:validate_expr"},
+        {"id": "EP-T4-04", "path": "security/output_filter.py:scrub_sensitive_tokens", "actor": "output_sanitizer", "method": "CALL", "route": "filter:scrub_tokens"}
+      ],
+      "vulnerabilities": [
+        {
+          "id": "VULN-T4-01",
+          "cwe": "CWE-77",
+          "title": "Indirect Prompt Injection via Unencapsulated Document Chunks",
+          "severity": "High",
+          "file": "rag/pipeline.py",
+          "lines": "1-9",
+          "description": "build_rag_prompt concatenates raw retrieved document chunks directly into system prompt without structural delimiters (e.g. XML tags) or boundary framing.",
+          "trigger": "An untrusted external document indexed into the vector database contains instructions overriding system instructions."
+        },
+        {
+          "id": "VULN-T4-02",
+          "cwe": "CWE-918",
+          "title": "Server-Side Request Forgery (SSRF) in External Reference Fetcher",
+          "severity": "High",
+          "file": "tools/fetcher.py",
+          "lines": "1-10",
+          "description": "fetch_document_from_url makes arbitrary HTTP requests using urllib.request without blocking loopback (127.0.0.1), private subnets (RFC 1918), or cloud metadata services (169.254.169.254).",
+          "trigger": "Attacker supplies url='http://169.254.169.254/latest/meta-data/' to leak cloud instance credentials."
+        }
+      ],
+      "negative_controls": [
+        {
+          "id": "CTRL-T4-01",
+          "title": "AST Expression Validation Sandbox",
+          "file": "tools/code_sandbox.py",
+          "lines": "1-13",
+          "rationale": "validate_safe_python_expression parses input with ast.parse(mode='eval') and strictly rejects imports, function calls, and statement nodes."
+        },
+        {
+          "id": "CTRL-T4-02",
+          "title": "Sensitive Token Redaction on Model Output",
+          "file": "security/output_filter.py",
+          "lines": "1-8",
+          "rationale": "scrub_sensitive_tokens sanitizes API keys and tokens before emitting responses to clients."
+        }
+      ]
+    },
+    "target5_secure_control": {
+      "name": "Target 5: Secure Negative-Control Application",
+      "category": "secure_control_reference",
+      "path": "/tmp/vibe-benchmark-5p/target5_secure_control",
+      "revision": "7037e920cab1d1ebe3d2c7bf490d7237347e14fa",
+      "entry_points": [
+        {"id": "EP-T5-01", "path": "app/db.py:query_users_sorted", "actor": "authenticated_user", "method": "GET", "route": "/api/users?sort={col}&limit={n}"},
+        {"id": "EP-T5-02", "path": "app/auth.py:verify_credentials", "actor": "anonymous_public", "method": "POST", "route": "/api/auth/login"},
+        {"id": "EP-T5-03", "path": "app/storage.py:save_uploaded_file", "actor": "authenticated_user", "method": "POST", "route": "/api/uploads"},
+        {"id": "EP-T5-04", "path": "app/headers.py:get_security_headers", "actor": "middleware", "method": "ALL", "route": "/*"}
+      ],
+      "vulnerabilities": [],
+      "negative_controls": [
+        {
+          "id": "CTRL-T5-01",
+          "title": "Allowlisted Column Mapping in Dynamic SQL (Negative Control Trap)",
+          "file": "app/db.py",
+          "lines": "1-14",
+          "rationale": "query_users_sorted maps sort_column through an explicit immutable allowlist dictionary, falling back to a safe default, with limit strictly parameterized."
+        },
+        {
+          "id": "CTRL-T5-02",
+          "title": "Timing-Safe Authentication with Dummy Hash (Negative Control Trap)",
+          "file": "app/auth.py",
+          "lines": "1-16",
+          "rationale": "verify_credentials computes a constant dummy hash if the user does not exist, eliminating timing disparity between existing and non-existing accounts."
+        },
+        {
+          "id": "CTRL-T5-03",
+          "title": "Canonical Path Containment and UUID Storage (Negative Control Trap)",
+          "file": "app/storage.py",
+          "lines": "1-19",
+          "rationale": "save_uploaded_file generates CSPRNG UUID names, strictly checks extension against an allowlist, and validates canonical containment via is_relative_to."
+        },
+        {
+          "id": "CTRL-T5-04",
+          "title": "Strict Defense-in-Depth Security Headers",
+          "file": "app/headers.py",
+          "lines": "1-10",
+          "rationale": "get_security_headers emits Content-Security-Policy, HSTS, X-Content-Type-Options: nosniff, and Referrer-Policy."
+        }
+      ]
+    }
+  }
+}
