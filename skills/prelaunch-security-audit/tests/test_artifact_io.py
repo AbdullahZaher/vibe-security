@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from audit_artifacts import bounded_command, load_json, validate_schema, write_new_artifact
+from audit_artifacts import bounded_command, load_json, trusted_root, validate_schema, write_new_artifact
 
 
 class ArtifactIOTests(unittest.TestCase):
@@ -30,7 +30,7 @@ class ArtifactIOTests(unittest.TestCase):
         (self.root / 'link').symlink_to(existing)
         (self.root / 'parent').symlink_to(self.root, target_is_directory=True)
         for path in (self.root / 'link', self.root / 'parent' / 'new'):
-            with self.assertRaises(OSError): write_new_artifact(path, 'bad')
+            with self.assertRaises((ValueError, OSError)): write_new_artifact(path, 'bad')
         self.assertEqual(existing.read_text(), 'preserve')
         self.assertFalse((self.root / 'new').exists())
 
@@ -38,6 +38,17 @@ class ArtifactIOTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             write_new_artifact(self.root / 'child' / '..' / 'escaped', 'bad')
         self.assertFalse((self.root / 'escaped').exists())
+
+    def test_immutable_system_root_symlink_is_canonicalized(self):
+        # macOS /var is a root-owned system symlink; user-writable links are not.
+        root = Path(tempfile.gettempdir())
+        self.assertEqual(trusted_root(root), root.resolve())
+
+    def test_user_writable_symlink_root_rejected(self):
+        (self.root / 'real').mkdir()
+        (self.root / 'link').symlink_to(self.root / 'real', target_is_directory=True)
+        with self.assertRaises(ValueError):
+            trusted_root(self.root / 'link')
 
     def test_bounded_child_output_stops_before_unbounded_allocation(self):
         # Executes only this fixed, reviewed stdlib expression; no target code.

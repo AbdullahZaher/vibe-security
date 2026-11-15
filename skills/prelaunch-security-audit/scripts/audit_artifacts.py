@@ -40,6 +40,36 @@ def safe_relative_path(value):
     return path
 
 
+def trusted_root(root):
+    """Canonicalize an operator-supplied root and reject mutable symlink components.
+
+    Frozen roots may sit below immutable system links (for example macOS
+    ``/var`` -> ``/private/var``). Only root-owned links inside directories that
+    the current user cannot modify are followed. A link created by the user or
+    inside a writable directory remains rejected, so untrusted repository or
+    task data cannot redirect the artifact boundary. Relative components below
+    the resolved root are still walked with O_NOFOLLOW and are never followed.
+    """
+    original = Path(root).absolute()
+    require(".." not in original.parts, "unsafe artifact root")
+    current = Path(original.anchor)
+    for part in original.parts[1:]:
+        candidate = current / part
+        if candidate.is_symlink():
+            parent = current.stat()
+            link = candidate.lstat()
+            euid = os.geteuid() if hasattr(os, "geteuid") else -1
+            immutable_parent = (parent.st_mode & 0o022) == 0 and (
+                euid == 0 or parent.st_uid != euid or not parent.st_mode & 0o200)
+            require(link.st_uid == 0 and immutable_parent,
+                    "artifact root contains a mutable symlink component")
+        current = candidate
+    resolved = Path(os.path.realpath(original))
+    require(".." not in resolved.parts and resolved.is_dir(),
+            "artifact root is not a directory")
+    return resolved
+
+
 def read_artifact(root, relative_path, max_bytes=MAX_BYTES):
     """Open a regular file through no-follow directory descriptors; never follow links.
 
@@ -49,10 +79,9 @@ def read_artifact(root, relative_path, max_bytes=MAX_BYTES):
     parts = safe_relative_path(relative_path).parts
     require(hasattr(os, "O_NOFOLLOW") and os.open in os.supports_dir_fd,
             "safe artifact reading unavailable on this host")
-    root = Path(root).absolute()
-    require(".." not in root.parts, "unsafe artifact root")
-    # Walk root itself through descriptors too: an lstat-then-open ancestor
-    # check would leave a symlink replacement race before opening the root.
+    root = trusted_root(root)
+    # Walk the resolved root through descriptors too: an lstat-then-open
+    # ancestor check would leave a symlink replacement race.
     fd = os.open(root.anchor, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
         for part in root.parts[1:] + parts[:-1]:
@@ -80,9 +109,16 @@ def write_new_artifact(path, content):
     require(".." not in path.parts and path.name not in {"", ".", ".."}, "unsafe output path")
     require(hasattr(os, "O_NOFOLLOW") and os.open in os.supports_dir_fd,
             "safe artifact writing unavailable on this host")
-    fd = os.open(path.anchor, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    ancestor, missing = path.parent, [path.name]
+    while not ancestor.exists():
+        if ancestor == ancestor.parent:
+            break
+        missing.append(ancestor.name)
+        ancestor = ancestor.parent
+    target = trusted_root(ancestor).joinpath(*reversed(missing))
+    fd = os.open(target.anchor, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
-        for part in path.parts[1:-1]:
+        for part in target.parts[1:-1]:
             try:
                 os.mkdir(part, mode=0o700, dir_fd=fd)
             except FileExistsError:
@@ -90,7 +126,7 @@ def write_new_artifact(path, content):
             child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
             os.close(fd)
             fd = child
-        leaf = os.open(path.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+        leaf = os.open(target.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
                        0o600, dir_fd=fd)
         with os.fdopen(leaf, "w", encoding="utf-8") as stream:
             stream.write(content)

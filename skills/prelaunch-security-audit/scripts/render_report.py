@@ -35,7 +35,13 @@ RESOLUTION_STATUS = {"open", "in_progress", "needs_approval", "fixed_verified", 
 SECRET_PATTERNS = [
     re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----.*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", re.S),
     re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b"),
+    re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+    re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b"),
+    re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}\b"),
+    re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"),
+    re.compile(r"\bsk_(?:live|test)_[A-Za-z0-9]{10,}\b"),
     re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
+    re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{20,}", re.I),
     re.compile(r"\b(?:password|api[_-]?key|secret|access[_-]?token)\s*[:=]\s*[^\s,;]+", re.I),
 ]
 
@@ -312,13 +318,16 @@ def _artifact_sections(data, source_root, artifact_root, host_attestations, prev
         summary = validate(data["coverage_ledger"], data["attack_surface"], source_root, artifact_root)
         if summary["mode"] == "quick":
             raise ValueError("quick ledger must use scoped Quick PR report, not full launch recommendation")
-        incomplete = bool(summary["inventory_without_ledger"]) or any(
+        failed_checks = [row for row in data["coverage_ledger"]["evidence"]
+                         if row.get("result") == "fail"]
+        incomplete = bool(failed_checks) or bool(summary["inventory_without_ledger"]) or any(
             summary["coverage_counts"][state] for state in
             ("partially_covered", "blocked", "deferred", "unassessed"))
         sections += ["", "## Attack surface and coverage", "",
                      f"- Discovered in-scope inventory units: {summary['discovered_in_scope_units']}",
                      f"- Inventory units represented in ledger: {summary['represented_inventory_units']}",
                      f"- Inventory units without ledger entries: {len(summary['inventory_without_ledger'])}",
+                     f"- Executed checks recorded as failed: {len(failed_checks)}",
                      "- Attack-surface completeness: unknown; outside-inventory assets remain unknown.",
                      "- These denominators describe discovered scope, never the whole system."]
         for status, count in summary["coverage_counts"].items():

@@ -40,7 +40,20 @@ class TestReport(unittest.TestCase):
         self.assertIn("| 01 | Authentication | not_verified |", render(data))
 
     def test_secret_redacted_and_pipes_escaped(self):
-        self.assertNotIn("ghp_" + "Z" * 30, sanitized("ghp_" + "Z" * 30))
+        samples = [
+            "ghp_" + "Z" * 30,
+            "AKIA" + "B" * 16,
+            "AIza" + "c" * 35,
+            "xoxb-" + "1" * 20,
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U",
+            "sk_live_" + "d" * 24,
+            "Bearer " + "e" * 32,
+        ]
+        for sample in samples:
+            with self.subTest(sample=sample):
+                redacted = sanitized(sample)
+                self.assertNotIn(sample, redacted)
+                self.assertIn("REDACTED", redacted)
         self.assertIn("\\|", sanitized("a|b"))
         self.assertIn("&lt;script&gt;", sanitized("<script>"))
 

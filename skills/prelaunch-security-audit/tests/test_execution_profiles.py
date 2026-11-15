@@ -36,6 +36,16 @@ class TestExecutionProfiles(unittest.TestCase):
         for profile in ('static-only', 'authorized-staging'):
             r = request(profile=profile, effect='verify_local')
             self.assertEqual(assess(r)['status'], 'blocked')
+        r = request(profile='authorized-staging', effect='modify_local')
+        authority = HostAttestation(digest(r), 'owner', 'reviewed-os-log', CONTROLS)
+        self.assertEqual(assess(r, attest=lambda r: authority)['status'], 'blocked')
+
+    def test_local_write_needs_full_isolation_controls(self):
+        r = request(profile='isolated-local', effect='modify_local')
+        authority = HostAttestation(digest(r), 'owner', 'reviewed-os-log', CONTROLS - {'filesystem'})
+        self.assertEqual(assess(r, attest=lambda r: authority)['status'], 'not_verified')
+        authority = HostAttestation(digest(r), 'owner', 'reviewed-os-log', CONTROLS)
+        self.assertEqual(assess(r, attest=lambda r: authority)['status'], 'eligible_for_host_dispatch')
 
     def test_docker_name_or_missing_isolation_controls_never_suffice(self):
         r = request(profile='isolated-local', effect='verify_local')

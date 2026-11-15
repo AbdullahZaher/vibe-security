@@ -1,4 +1,5 @@
 """Integration of real validators with synthetic report artifacts."""
+import hashlib
 import json
 from pathlib import Path
 import unittest
@@ -75,6 +76,25 @@ class ReportArtifactTests(unittest.TestCase):
         self.data['coverage_ledger']['units'][0].update(status='blocked',evidence_ids=[])
         self.data['coverage_ledger']['evidence'] = []
         self.assertIn('CONDITIONAL LAUNCH', self.render())
+
+    def test_failed_executed_coverage_check_prevents_all_clear(self):
+        proof = self.fixture.ledger['evidence'][0]
+        proof.update(kind='test', tier='runtime', result='fail')
+        log = b'synthetic tenant isolation test: FAILED\n'
+        (self.fixture.root / 'run.log').write_bytes(log)
+        proof['artifact'] = {'path': 'run.log', 'sha256': hashlib.sha256(log).hexdigest()}
+        self.data['launch_recommendation'] = 'no blockers found in tested scope'
+        self.data['verification_log'] = []
+        for row in self.data['controls']:
+            row.update(status='pass', test_result='pass', test_method='targeted check',
+                evidence='test.log', evidence_revision=self.fixture.rev, evidence_tier='build',
+                verification_ref='V-' + row['id'])
+            self.data['verification_log'].append(dict(
+                id=row['verification_ref'], control_id=row['id'], revision=self.fixture.rev,
+                result='pass', method='targeted check', environment='fixture', observed='pass'))
+        output = render(self.data, source_root=self.fixture.repo, artifact_root=self.fixture.root)
+        self.assertIn('CONDITIONAL LAUNCH', output)
+        self.assertIn('Executed checks recorded as failed: 1', output)
 
     def test_budget_render_and_quick_has_no_launch_recommendation(self):
         b = budget()

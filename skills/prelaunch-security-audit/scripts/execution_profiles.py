@@ -15,7 +15,7 @@ from pathlib import Path, PurePosixPath
 import re
 import stat
 
-from audit_artifacts import load_json
+from audit_artifacts import load_json, trusted_root
 
 EFFECTS = {'observe', 'verify_local', 'network_read', 'modify_local', 'external_write', 'destructive'}
 PROFILES = {'static-only', 'isolated-local', 'authorized-staging'}
@@ -70,15 +70,16 @@ def assess(request, *, attest=None):
         return {**result, 'status': 'blocked', 'reason': 'destructive effects require a separate supervised workflow'}
     if request['profile'] == 'static-only' and request['effect'] != 'observe':
         return {**result, 'status': 'blocked', 'reason': 'static-only permits no target code or side effects'}
-    if request['profile'] == 'authorized-staging' and request['effect'] == 'verify_local':
-        return {**result, 'status': 'blocked', 'reason': 'staging permission is not local execution isolation'}
+    if request['profile'] == 'authorized-staging' and request['effect'] in {'verify_local', 'modify_local'}:
+        return {**result, 'status': 'blocked',
+                'reason': 'staging permission is not local execution or local-write isolation'}
     if attest is None:
         return result
     authority = attest(dict(request))
     if (not isinstance(authority, HostAttestation) or authority.request_sha256 != digest(request)
             or not authority.authorization_ref):
         return result
-    if request['effect'] == 'verify_local':
+    if request['effect'] in {'verify_local', 'modify_local'}:
         if (request['profile'] != 'isolated-local' or not authority.isolation_ref
                 or not CONTROLS <= authority.enforced_controls):
             return {**result, 'reason': 'required OS-enforced isolation controls not verified'}
@@ -121,11 +122,13 @@ class StaticHost:
                 raise ValueError('noncanonical path')
             # Component-wise O_NOFOLLOW closes parent-symlink and TOCTOU escapes.
             # Unsupported platforms fail closed; do not substitute resolve()+open().
+            # Only immutable system links in the operator root are canonicalized.
             if not hasattr(os, 'O_NOFOLLOW') or os.open not in os.supports_dir_fd:
                 raise ValueError('safe file-descriptor traversal unavailable')
+            root = trusted_root(self.root)
             directory = os.open('/', os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
             try:
-                for part in (*self.root.absolute().parts[1:], *parts[:-1]):
+                for part in (*root.parts[1:], *parts[:-1]):
                     if part in {'.', '..'}:
                         raise ValueError('noncanonical root')
                     next_directory = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,

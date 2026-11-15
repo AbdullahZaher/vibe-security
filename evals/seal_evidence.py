@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import stat
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -45,11 +46,26 @@ def _new_private_file(path: Path, contents: bytes) -> None:
 
 
 def _validate_private_source(path: Path, size_limit: int) -> bytes:
-    if path.is_symlink() or not path.is_file():
-        raise ValueError("source is not a regular private file")
-    if path.stat().st_size > size_limit:
-        raise ValueError("source evidence exceeds allowed size")
-    return path.read_bytes()
+    """Read one regular private file without following links or racing a swap."""
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise ValueError("safe private-file reading unavailable on this host")
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError as exc:
+        raise ValueError("source is not a regular private file") from exc
+    try:
+        meta = os.fstat(fd)
+        if not stat.S_ISREG(meta.st_mode):
+            raise ValueError("source is not a regular private file")
+        if meta.st_size > size_limit:
+            raise ValueError("source evidence exceeds allowed size")
+        with os.fdopen(fd, "rb", closefd=False) as stream:
+            data = stream.read(size_limit + 1)
+        if len(data) > size_limit:
+            raise ValueError("source evidence exceeds allowed size")
+        return data
+    finally:
+        os.close(fd)
 
 
 def collect(trace: Path, review_dir: Path) -> dict:
