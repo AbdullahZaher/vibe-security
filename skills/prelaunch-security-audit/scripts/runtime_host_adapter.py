@@ -565,6 +565,12 @@ class IsolatedHostAdapter:
                 "reason": verdict.get("reason"),
             }
 
+        # No external isolation supervisor is implemented. Even changing the
+        # diagnostic RUNTIME_EXECUTION_ENABLED flag cannot reactivate the legacy
+        # Seatbelt code path; no approval is burned for a refused operation.
+        event["reason"] = "untrusted code execution disabled; external isolation supervisor not implemented"
+        return {"occurred": False, "blocked": True, "reason": event["reason"]}
+
         effective_auth_ref = verdict.get("authorization_ref", auth_ref)
 
         # R-07 / A1: Single-use approval consumption at trusted host boundary (cross-instance/cross-process)
@@ -581,9 +587,8 @@ class IsolatedHostAdapter:
         # setsid() descendants or enforce complete memory/disk/PID quotas.
         # This dormant legacy executor requires a separately verified external
         # VM/microVM execution supervisor before any untrusted code may run.
-        if not RUNTIME_EXECUTION_ENABLED:
-            event["reason"] = "untrusted code execution disabled; external isolation supervisor not implemented"
-            return {"occurred": False, "blocked": True, "reason": event["reason"]}
+        # The legacy branch below remains unreachable; it must be deleted or
+        # replaced by a separately verified supervisor before re-enabling execution.
 
         # Host sandbox availability check
         if not SANDBOX_EXEC.exists():
