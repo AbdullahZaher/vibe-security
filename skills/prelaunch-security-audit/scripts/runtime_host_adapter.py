@@ -17,6 +17,8 @@ import fcntl
 import hashlib
 import json
 import os
+import secrets
+import stat
 from pathlib import Path
 import selectors
 import shutil
@@ -74,7 +76,7 @@ class ApprovalStore:
     """Atomic single-use authorization registry preventing replay across instances and processes (A1, R-07)."""
 
     def __init__(self, storage_path: Path | None = None):
-        self.storage_path = Path(storage_path).resolve() if storage_path else None
+        self.storage_path = Path(storage_path).absolute() if storage_path else None
         self._consumed: set[str] = set()
         self._lock = threading.Lock()
         self._corrupted_err: str | None = None
@@ -84,62 +86,104 @@ class ApprovalStore:
             except Exception as exc:
                 self._corrupted_err = str(exc)
 
+
+    def _private_parent(self) -> Path:
+        """Reject shared, symlinked, or misowned approval registry directories."""
+        if self.storage_path is None:
+            raise ValueError("no durable approval store configured")
+        parent = self.storage_path.parent
+        parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        info = parent.lstat()
+        if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid()
+                or info.st_mode & 0o077):
+            raise PermissionError("approval store directory must be host-owned mode 0700")
+        return parent
+
+    @staticmethod
+    def _checked_file(fd: int, label: str) -> None:
+        meta = os.fstat(fd)
+        if (not stat.S_ISREG(meta.st_mode) or meta.st_uid != os.getuid()
+                or meta.st_mode & 0o077):
+            raise PermissionError(f"{label} must be host-owned regular file mode 0600")
+
     def _load_from_disk(self) -> set[str]:
-        if not self.storage_path or not self.storage_path.exists():
+        if self.storage_path is None:
             return set()
-        text = self.storage_path.read_text(encoding="utf-8")
-        if not text.strip():
+        self._private_parent()
+        try:
+            fd = os.open(self.storage_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        except FileNotFoundError:
             return set()
         try:
-            data = json.loads(text)
-        except Exception as exc:
-            raise ValueError(f"Approval store file {self.storage_path} is corrupted: {exc}") from exc
-        if not isinstance(data, list):
-            raise ValueError(f"Approval store file {self.storage_path} is corrupted: expected list schema")
-        return set(data)
+            self._checked_file(fd, "approval store")
+            with os.fdopen(fd, "rb", closefd=False) as file:
+                raw = file.read(4_000_001)
+            if len(raw) > 4_000_000:
+                raise ValueError("approval store exceeds bounded size limit")
+            if not raw:
+                raise ValueError("approval store unexpectedly empty")
+            data = json.loads(raw.decode("utf-8"))
+            if (not isinstance(data, list) or len(data) > 20000
+                    or any(not isinstance(v, str) or not 1 <= len(v) <= 512 for v in data)
+                    or len(set(data)) != len(data)):
+                raise ValueError("invalid approval store schema")
+            return set(data)
+        finally:
+            os.close(fd)
 
     def consume(self, request_id: str, authorization_ref: str, spec_sha256: str) -> bool:
-        """Atomically consume an approval. Returns True if consumed, False if replayed. Fails closed on corruption."""
+        """Single-use durable consumption with private files, flock and fsync."""
         if self._corrupted_err:
-            raise ValueError(f"Approval store file {self.storage_path} is corrupted: {self._corrupted_err}")
+            raise ValueError("approval store was corrupted before initialization")
+        if any(not isinstance(v, str) or not v or ":" in v for v in
+               (request_id, authorization_ref, spec_sha256)):
+            raise ValueError("invalid approval identity")
         key = f"{request_id}:{authorization_ref}:{spec_sha256}"
+        if len(key) > 512:
+            raise ValueError("approval identity too long")
         with self._lock:
             if key in self._consumed:
                 return False
-            if self.storage_path:
-                self.storage_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-                lock_file = self.storage_path.with_name(f"{self.storage_path.name}.lock")
-                lock_fd = os.open(lock_file, os.O_RDWR | os.O_CREAT, 0o600)
-                try:
-                    fcntl.flock(lock_fd, fcntl.LOCK_EX)
-                    try:
-                        on_disk = self._load_from_disk()
-                        if key in on_disk:
-                            self._consumed.add(key)
-                            return False
-                        on_disk.add(key)
-                        self._consumed.add(key)
-                        # Atomic file write with strict 0o600 permissions
-                        tmp_path = self.storage_path.with_name(f"{self.storage_path.name}.tmp.{os.getpid()}")
-                        tmp_fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-                        try:
-                            with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
-                                json.dump(sorted(on_disk), f)
-                        except Exception:
-                            try:
-                                os.unlink(tmp_path)
-                            except OSError:
-                                pass
-                            raise
-                        os.replace(tmp_path, self.storage_path)
-                        return True
-                    finally:
-                        fcntl.flock(lock_fd, fcntl.LOCK_UN)
-                finally:
-                    os.close(lock_fd)
-            else:
+            if self.storage_path is None:
                 self._consumed.add(key)
                 return True
+            parent = self._private_parent()
+            lock_name = self.storage_path.name + ".lock"
+            lock_fd = os.open(parent / lock_name,
+                              os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+            try:
+                self._checked_file(lock_fd, "approval lock")
+                fcntl.flock(lock_fd, fcntl.LOCK_EX)
+                try:
+                    on_disk = self._load_from_disk()
+                    if key in on_disk:
+                        self._consumed.add(key)
+                        return False
+                    on_disk.add(key)
+                    if len(on_disk) > 20000:
+                        raise ValueError("approval store capacity exceeded; fail closed")
+                    tmp_path = parent / (f".{self.storage_path.name}." + secrets.token_hex(16) + ".tmp")
+                    tmp_fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                                     os.O_NOFOLLOW, 0o600)
+                    try:
+                        with os.fdopen(tmp_fd, "w", encoding="utf-8") as stream:
+                            json.dump(sorted(on_disk), stream)
+                            stream.flush()
+                            os.fsync(stream.fileno())
+                        os.replace(tmp_path, self.storage_path)
+                        dir_fd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                        try:
+                            os.fsync(dir_fd)
+                        finally:
+                            os.close(dir_fd)
+                    finally:
+                        tmp_path.unlink(missing_ok=True)
+                    self._consumed.add(key)
+                    return True
+                finally:
+                    fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            finally:
+                os.close(lock_fd)
 
     def is_consumed(self, request_id: str, authorization_ref: str, spec_sha256: str) -> bool:
         key = f"{request_id}:{authorization_ref}:{spec_sha256}"
@@ -172,13 +216,13 @@ class ApprovalStore:
 def get_default_approval_path() -> Path:
     env_path = os.environ.get("VIBE_SECURITY_APPROVAL_STORE")
     if env_path:
-        return Path(env_path).resolve()
+        return Path(env_path).absolute()
     base_dir = Path.home() / ".vibe-security"
     try:
         base_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     except OSError:
         pass
-    return (base_dir / "approvals.json").resolve()
+    return (base_dir / "approvals.json").absolute()
 
 
 _DEFAULT_APPROVAL_STORE: ApprovalStore | None = None
@@ -437,6 +481,11 @@ class IsolatedHostAdapter:
             event["reason"] = "arbitrary target code socket egress is prohibited; host sandbox cannot guarantee destination-level L7 filtering"
             return {"occurred": False, "blocked": True, "status": "blocked", "reason": event["reason"]}
 
+        # Only independently approved isolated-local execution can invoke a subprocess.
+        if request.get("effect") not in {"verify_local", "modify_local"} or request.get("profile") != "isolated-local":
+            event["reason"] = "subprocess dispatch requires explicit isolated-local execution authorization"
+            return {"occurred": False, "blocked": True, "reason": event["reason"]}
+
         # Target and revision verification against adapter configuration
         if request.get("target") != self.target or request.get("revision") != self.revision:
             event["reason"] = "target or revision mismatch with host configuration"
@@ -474,8 +523,9 @@ class IsolatedHostAdapter:
             "effect": spec.effect,
             "profile": spec.profile,
             "operation": spec.operation,
-            "destination": spec.destination,
-            "paths": list(spec.paths),
+            "destination_sha256": hashlib.sha256(spec.destination.encode()).hexdigest(),
+            "paths_sha256": hashlib.sha256(json.dumps(list(spec.paths)).encode()).hexdigest(),
+            "paths_count": len(spec.paths),
             "env_keys": list(spec.env_keys),
             "timeout": spec.timeout,
             "max_bytes": spec.max_bytes,
@@ -486,7 +536,7 @@ class IsolatedHostAdapter:
         if "spec_sha256" in request and request["spec_sha256"] != spec_digest:
             event["reason"] = "execution spec digest does not match authorized spec_sha256"
             return {"occurred": False, "blocked": True, "reason": event["reason"]}
-        request["spec_sha256"] = spec_digest
+        request = {**request, "spec_sha256": spec_digest}
 
         # Assess request against policy and host attestation
         try:
@@ -515,6 +565,13 @@ class IsolatedHostAdapter:
         except Exception as exc:
             event["reason"] = f"approval store error (fail-closed): {exc}"
             return {"occurred": False, "blocked": True, "reason": event["reason"]}
+
+        # Fail closed: Seatbelt and POSIX process groups cannot contain detached
+        # setsid() descendants or enforce complete memory/disk/PID quotas.
+        # This dormant legacy executor requires a separately verified external
+        # VM/microVM execution supervisor before any untrusted code may run.
+        event["reason"] = "untrusted code execution disabled; external isolation supervisor not implemented"
+        return {"occurred": False, "blocked": True, "reason": event["reason"]}
 
         # Host sandbox availability check
         if not SANDBOX_EXEC.exists():
