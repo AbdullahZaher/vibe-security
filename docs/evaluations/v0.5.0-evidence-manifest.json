@@ -16,7 +16,8 @@
     "build": "24G419",
     "kernel": "24.6.0",
     "arch": "arm64",
-    "python": "3.13.7"
+    "python": "3.13.7",
+    "evidence_origin": "developer-reported, not independently signed/validated by corrective reviewer"
   },
   "benchmark_targets": {
     "target1_multitenant_saas": "4a320c495db407794be25bea811a26c772d10dd9",
@@ -49,13 +50,13 @@
     "target_file": "docs/security/v0.5.0-runtime-test-matrix.json",
     "historical_recorded_commit": "8e507e253c870f5d8e68f4b8c519435b1dd902e0",
     "historical_recorded_timestamp": "2026-11-15T21:00:00Z",
-    "discrepancy_analysis": "Commit 8e507e2 was authored at 17:39:09 UTC (20:39:09 +0300). Subsequent test additions up to ad3ac23 occurred between 21:04 and 21:56 +0300. The hardcoded 21:00:00Z timestamp reflects timezone confusion between +0300 and UTC while reviewed_revision was not updated. File is preserved verbatim as historical developer evidence, superseded for v0.5.0 certification by docs/security/v0.5.0-remediation-verification-matrix.json.",
-    "action_taken": "Preserved historical file verbatim; bound new verified evidence to exact commit SHA."
+    "discrepancy_analysis": "Author-supplied timezone-confusion hypothesis, not independently authenticated; historical file preserved verbatim.",
+    "action_taken": "Retain original historical matrix; ensure current file-digest claims match bytes, without asserting host or release provenance."
   },
   "artifact_digests": {
     "CHANGELOG.md": {
-      "sha256": "3940f55bf3d97c25d142e59b104906b0f5c7cf04498d7791133a282f2fa65a91",
-      "bytes": 7475
+      "sha256": "9a790a0bebdab8929260d1a31fbba47c0791d4f30fc77e848a0478e673701b70",
+      "bytes": 8595
     },
     "skills/prelaunch-security-audit/SKILL.md": {
       "sha256": "beed1112d1d0f5611fb7b9aeefbe535a683b4abe028a5b3793930c9ef3cc8fe4",
@@ -102,28 +103,68 @@
       "bytes": 8556
     },
     "docs/security/v0.5.0-macos-host-verification.md": {
-      "sha256": "f74a7ac6ae200a9ad79aff2a42e10ac092cd445d1c5610d51c97f599b029e397",
-      "bytes": 13371
+      "sha256": "ea0e4421c50ed5cdedac634cc7097d29945bbe0c9f927c8d68d6883550ed7d7f",
+      "bytes": 14110
     },
     "docs/evaluations/v0.5.0-abc-metrics.json": {
       "sha256": "1be764889aabc21405afb50d033faa8b49b2708a360c420edfa0ea9aa4739b8f",
       "bytes": 5664
     },
     "docs/evaluations/v0.5.0-final-abc-evaluation.md": {
-      "sha256": "0c74563e658adebe41f028a25024c524cb4d882fb4f4653a05325b17773e6c35",
-      "bytes": 11752
+      "sha256": "77dbf9979428ee890ce6d69bf5dc722aaf00bb47f1fc9031ebd761c64bb4928f",
+      "bytes": 13829
     },
     "docs/security/v0.5.0-final-security-certification.md": {
-      "sha256": "ec92907d4950d7631889b0391c86e82b94f1313643dbff527e16d49723e5d14f",
-      "bytes": 13451
+      "sha256": "7664ee303d28e329def77616920fa4ec07a61751e6c23ff5eb89c014c5d53afa",
+      "bytes": 17041
     },
     "docs/release/v0.5.0-release-readiness-checklist.md": {
-      "sha256": "ac5df97dd7dc8be0b964deb1bcf767e71c0241758f8d5fa6dd199fd521abe330",
-      "bytes": 9009
+      "sha256": "ff73d58ada8565170974bd1d9fd3b3fcedad55c11e42c1407227acfab562a3eb",
+      "bytes": 12843
     },
     "docs/security/v0.5.0-runtime-test-matrix.json": {
       "sha256": "212773edf1966a68333f6a467b0444314bd0f015084af492f42df4ca2d8e820f",
       "bytes": 16847
+    },
+    "docs/security/v0.5.0-original-findings-crosswalk.json": {
+      "sha256": "bfecea28dba06edfc5a00b8560d4ca1e82de40f9c9ef8e7ed1ec9c6f024a2126",
+      "bytes": 8824
+    },
+    "evals/verify_evidence_manifest.py": {
+      "sha256": "80307e56e01b8d0de3fcf38c1886c9e7a5e16020a0241669faf959a57a4087a0",
+      "bytes": 3495
+    },
+    "skills/prelaunch-security-audit/tests/test_evidence_manifest_gate.py": {
+      "sha256": "8237b5db860f729639e17de4fa9a449e41963542c26b6bd68a850b7b51f654e8",
+      "bytes": 2617
+    },
+    "docs/security/v0.5.0-release-readiness-blockers.md": {
+      "sha256": "4fca3d3c8fb458a94be9f5ef2fdd783a81c030f8481f2a1f050212073e467e52",
+      "bytes": 6339
     }
-  }
+  },
+  "manifest_scope": {
+    "evidence_kind": "SHA256 repository file content integrity only; not host provenance or release attestation",
+    "historical_source_commit": "e9a50054b1ba058998dcb2f47a69a27001d90ac5",
+    "historical_source_tree": "4b0f13270fa92395a2f1e5bd96d857633ac80210",
+    "pre_correction_evidence_commit": "b8901c6860ca483d730cdeeb945025bb98792d45",
+    "pre_correction_evidence_tree": "cb9d7632361ed656c0bfe9bcb6ed09e4059e1283",
+    "verified_skill_tree": "3242bf0bf624641e49113cdd5ee9a8b837440726",
+    "final_release_commit": null,
+    "final_release_attestation": "must be produced outside Git history after SHA freeze by authorized human or trusted CI signing process",
+    "release_authorized": false,
+    "original_findings": "docs/security/v0.5.0-original-findings-crosswalk.json",
+    "unit_ci": {
+      "total": 286,
+      "passed": 254,
+      "skipped": 32,
+      "failed": 0
+    },
+    "mac_host_attestation_independently_verified": false,
+    "provider_trial_attestation_independently_verified": false,
+    "accepted_authenticated_trial_slots": 0
+  },
+  "generated_at_is_historical": true,
+  "evaluation_session_status": "3 developer-reported multi-target pilots; 0 authenticated slots accepted",
+  "ground_truth_authentication": "not independently verified"
 }
