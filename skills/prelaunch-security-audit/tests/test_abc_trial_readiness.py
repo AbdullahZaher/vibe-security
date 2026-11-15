@@ -72,6 +72,12 @@ class ABCEvaluationReadinessTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "release requires"):
             plan(p)
 
+    def test_relabeled_same_repository_cannot_count_as_five_independent_cases(self):
+        p = authorized_test_protocol()
+        p["cases"][1]["source_revision"] = p["cases"][0]["source_revision"]
+        with self.assertRaisesRegex(ValueError, "duplicate case source revisions"):
+            plan(p)
+
     def test_no_mutation_to_trial_records(self):
         p = authorized_test_protocol()
         records = trials(p)
