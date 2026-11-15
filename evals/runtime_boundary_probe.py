@@ -223,10 +223,12 @@ def main() -> int:
             )
         adapter = IsolatedHostAdapter(fixture, scratch, target="synthetic", revision="a" * 40,
                                       attestation_provider=_attest)
+        cmd_auth = [interpreter, "-c", "print('adapter_ok')"]
         req_auth = {"id": "probe-adapter-1", "target": "synthetic", "revision": "a" * 40,
                     "effect": "verify_local", "profile": "isolated-local",
-                    "operation": "test_echo", "destination": "", "paths": ["source.txt"]}
-        disp_res = adapter.dispatch(req_auth, [interpreter, "-c", "print('adapter_ok')"])
+                    "operation": "test_echo", "destination": "", "paths": ["source.txt"],
+                    "command": cmd_auth}
+        disp_res = adapter.dispatch(req_auth, cmd_auth)
         probe.add("adapter_authorized_execution_allowed", "host_adapter",
                   "IsolatedHostAdapter.dispatch(verify_local)", 0,
                   {"exit_code": disp_res.get("exit_code"), "occurred": disp_res.get("occurred")},
@@ -235,7 +237,7 @@ def main() -> int:
 
         unauth_adapter = IsolatedHostAdapter(fixture, scratch, target="synthetic", revision="a" * 40,
                                              attestation_provider=lambda _r: None)
-        disp_unauth = unauth_adapter.dispatch(req_auth, [interpreter, "-c", "print('bad')"])
+        disp_unauth = unauth_adapter.dispatch(req_auth, cmd_auth)
         probe.add("adapter_unauthorized_execution_blocked", "host_adapter",
                   "IsolatedHostAdapter.dispatch(unauthorized)", "blocked",
                   {"blocked": disp_unauth.get("blocked"), "occurred": disp_unauth.get("occurred")},

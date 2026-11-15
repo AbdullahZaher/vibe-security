@@ -38,11 +38,13 @@ class HostAttestation:
     authorization_ref: str
     isolation_ref: str = ''
     enforced_controls: frozenset[str] = frozenset()
+    command_sha256: str = ''
 
 
 def validate_request(request):
     expected = {'id', 'target', 'revision', 'effect', 'profile', 'operation', 'destination', 'paths'}
-    if not isinstance(request, dict) or set(request) != expected:
+    optional = {'command'}
+    if not isinstance(request, dict) or not (expected <= set(request) <= (expected | optional)):
         raise ValueError('request must have exactly the documented fields; approval flags are not authority')
     if any(not isinstance(request[k], str) or not request[k].strip()
            for k in ('id', 'target', 'revision', 'effect', 'profile', 'operation')):
@@ -55,6 +57,11 @@ def validate_request(request):
         raise ValueError('invalid destination or paths')
     if any(not isinstance(p, str) or not p for p in request['paths']):
         raise ValueError('invalid path')
+    if 'command' in request:
+        if not isinstance(request['command'], list) or not request['command'] or any(
+            not isinstance(c, str) or not c.strip() for c in request['command']
+        ):
+            raise ValueError('command must be a non-empty list of non-empty strings')
     if request['effect'] in {'network_read', 'external_write'} and not request['destination']:
         raise ValueError('remote operation needs exact destination')
     if request['effect'] in {'observe', 'verify_local', 'modify_local'} and not request['paths']:
@@ -79,6 +86,10 @@ def assess(request, *, attest=None):
     if (not isinstance(authority, HostAttestation) or authority.request_sha256 != digest(request)
             or not authority.authorization_ref):
         return result
+    if authority.command_sha256:
+        cmd = request.get('command')
+        if not cmd or digest(cmd) != authority.command_sha256:
+            return {**result, 'reason': 'command does not match authorized command_sha256'}
     if request['effect'] in {'verify_local', 'modify_local', 'network_read', 'external_write'}:
         if (request['profile'] != 'isolated-local' or not authority.isolation_ref
                 or not CONTROLS <= authority.enforced_controls):
