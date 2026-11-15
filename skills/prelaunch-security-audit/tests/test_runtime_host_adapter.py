@@ -37,7 +37,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.source_root = self.base / "src"
         self.source_root.mkdir()
         self.scratch_root = self.base / "scratch"
-        self.scratch_root.mkdir()
+        self.scratch_root.mkdir(mode=0o700)
         self.target = "synthetic-repo"
         self.revision = "a" * 40
         get_default_approval_store().clear()
@@ -674,7 +674,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
             res = adapter.dispatch(req, cmd)
             self.assertTrue(res["blocked"])
             self.assertFalse(res["occurred"])
-            self.assertIn("host sandbox facility", res["reason"])
+            self.assertIn("external isolation supervisor" if not RUNTIME_EXECUTION_ENABLED else "host sandbox facility", res["reason"])
 
     # -------------------------------------------------------------------------
     # R-05: Genuine default-deny filesystem read isolation
