@@ -33,6 +33,8 @@ from audit_artifacts import MAX_BYTES, require, trusted_root
 from execution_profiles import CONTROLS, HostAttestation, assess, digest, validate_request
 
 SANDBOX_EXEC = Path("/usr/bin/sandbox-exec")
+# No externally verified supervisor or complete OS resource quota exists.
+RUNTIME_EXECUTION_ENABLED = False
 SAFE_ENV_KEYS = frozenset({"PATH", "TMPDIR", "PYTHONPATH", "PYTHONNOUSERSITE"})
 
 
@@ -570,8 +572,9 @@ class IsolatedHostAdapter:
         # setsid() descendants or enforce complete memory/disk/PID quotas.
         # This dormant legacy executor requires a separately verified external
         # VM/microVM execution supervisor before any untrusted code may run.
-        event["reason"] = "untrusted code execution disabled; external isolation supervisor not implemented"
-        return {"occurred": False, "blocked": True, "reason": event["reason"]}
+        if not RUNTIME_EXECUTION_ENABLED:
+            event["reason"] = "untrusted code execution disabled; external isolation supervisor not implemented"
+            return {"occurred": False, "blocked": True, "reason": event["reason"]}
 
         # Host sandbox availability check
         if not SANDBOX_EXEC.exists():
