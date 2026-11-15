@@ -141,6 +141,18 @@
     "docs/security/v0.5.0-release-readiness-blockers.md": {
       "sha256": "4fca3d3c8fb458a94be9f5ef2fdd783a81c030f8481f2a1f050212073e467e52",
       "bytes": 6339
+    },
+    "evals/abc_trial_readiness.py": {
+      "sha256": "6bd2ac9f14bcd6abe58f0cadb01d4d482a2835afc7d60086782b170a786171cd",
+      "bytes": 4300
+    },
+    "skills/prelaunch-security-audit/tests/test_abc_trial_readiness.py": {
+      "sha256": "e0df7e7699233da8894aea53ee0683c118b509f9ba48482352d01f2242b05f33",
+      "bytes": 3439
+    },
+    "docs/release/v0.5.0-evaluation-and-governance-handoff.md": {
+      "sha256": "1b32d85e547abb9c497d36b4eb92d137a836b748339c5c545792b7879d283953",
+      "bytes": 11402
     }
   },
   "manifest_scope": {
@@ -166,5 +178,12 @@
   },
   "generated_at_is_historical": true,
   "evaluation_session_status": "3 developer-reported multi-target pilots; 0 authenticated slots accepted",
-  "ground_truth_authentication": "not independently verified"
+  "ground_truth_authentication": "not independently verified",
+  "evaluation_readiness_scope": {
+    "planned_slots_per_five_target_protocol": 45,
+    "paid_model_calls_executed_in_this_phase": 0,
+    "actual_trial_evidence_authenticated_by_this_phase": 0,
+    "governance_issue": "https://github.com/AbdullahZaher/vibe-security/issues/4",
+    "state": "BLOCK_STABLE_RELEASE"
+  }
 }
