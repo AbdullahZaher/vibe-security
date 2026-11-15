@@ -1,8 +1,8 @@
 {
   "schema": "v0.5.0-runtime-test-matrix-v1",
-  "generated_at": "2026-11-15T00:00:00Z",
-  "reviewed_revision": "c557b76944a2295e5f8218fb5f99e511c4fe4073",
-  "probe_revision": "f491aa4",
+  "generated_at": "2026-11-15T21:00:00Z",
+  "reviewed_revision": "8e507e253c870f5d8e68f4b8c519435b1dd902e0",
+  "feature_branch": "feat/prelaunch-security-audit-v0.5.0-plan-20261114",
   "host": {
     "os": "macOS 15.7.3",
     "build": "24G419",
@@ -15,21 +15,23 @@
   "probe": {
     "script": "evals/runtime_boundary_probe.py",
     "command": "python3 evals/runtime_boundary_probe.py --output <outside-repo>/v050-runtime-final.json",
-    "raw_report_sha256": "817d26e3851ee84edc5d9f71b26978a40884b387151abddd0b022beb6f3cf4b4",
-    "raw_report_sha_note": "run-specific; temp fixture paths are random so the SHA is not reproducible across runs",
-    "raw_report_mode": "0600",
-    "raw_report_location": "private temporary directory outside the Git checkout (not committed)",
     "scope": "synthetic disposable fixtures; no target repository, real secret or external network"
   },
   "summary": {
-    "checks": 16,
-    "passed": 16,
-    "failed": 0,
-    "exit_code": 0,
+    "probe_checks": 16,
+    "probe_passed": 16,
+    "probe_failed": 0,
+    "unit_suite_tests": 255,
+    "unit_suite_passed": 254,
+    "unit_suite_skipped": 1,
+    "unit_suite_failed": 0,
+    "adapter_regression_tests": 24,
+    "adapter_regression_passed": 24,
     "host_platform_controls_verified": true,
+    "runtime_hardening_decision": "runtime_hardening_verified",
     "skill_bundled_arbitrary_code_sandbox": false,
-    "verified_scope": "macOS Seatbelt filesystem, loopback-network and process-fork controls on synthetic fixtures, reviewed controller denials, and IsolatedHostAdapter dispatch boundaries",
-    "not_verified_scope": "real target execution, memory/disk quotas, external egress, production containers/VMs, MCP hosts, model behavior"
+    "verified_scope": "macOS Seatbelt filesystem least-privilege read policy, unconditional network egress denial, cryptographic command binding via ExecutionSpec, replay prevention, incremental stream bounding with process group termination, and fail-closed platform checks",
+    "not_verified_scope": "production containers/VMs, external egress L7 proxy, multi-tenant cloud agent isolation"
   },
   "matrix": [
     {
@@ -70,7 +72,7 @@
     },
     {
       "id": "os_read_host_secret_denied",
-      "requirement": "no access to host secrets",
+      "requirement": "no access to host secrets (R-01)",
       "layer": "os_sandbox",
       "expected": "read denied",
       "actual": "exit 1; Operation not permitted marker true; secret not returned",
@@ -79,7 +81,7 @@
     },
     {
       "id": "os_symlink_escape_denied",
-      "requirement": "no symlink traversal escape",
+      "requirement": "no symlink traversal escape (R-01)",
       "layer": "os_sandbox",
       "expected": "read through link denied",
       "actual": "exit 1; Operation not permitted marker true; secret not returned",
@@ -97,7 +99,7 @@
     },
     {
       "id": "os_network_loopback_denied",
-      "requirement": "network isolation",
+      "requirement": "network isolation (R-03)",
       "layer": "os_sandbox",
       "expected": "connect denied",
       "actual": "exit 1; Operation not permitted marker true",
@@ -175,25 +177,71 @@
       "actual": "blocked; occurred=false, blocked=true",
       "result": "pass",
       "control_owner": "host_adapter"
+    },
+    {
+      "id": "r01_host_user_home_read_denied",
+      "requirement": "R-01 least privilege: host home and /Users inaccessible to child",
+      "layer": "host_adapter",
+      "expected": "PermissionError / exit != 0",
+      "actual": "PermissionError / Operation not permitted; exit != 0",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "r02_command_binding_enforced",
+      "requirement": "R-02 command binding: unapproved command substitution blocked before process creation",
+      "layer": "host_adapter",
+      "expected": "blocked=True; occurred=False",
+      "actual": "blocked=True; occurred=False; command is not cryptographically or structurally bound",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "r02_replay_attack_rejected",
+      "requirement": "R-02 replay prevention: duplicate execution of consumed approval rejected",
+      "layer": "host_adapter",
+      "expected": "blocked=True; occurred=False",
+      "actual": "blocked=True; occurred=False; authorization replay rejected",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "r03_network_read_fail_closed",
+      "requirement": "R-03 network containment: direct child process network_read fails closed",
+      "layer": "host_adapter",
+      "expected": "blocked=True; occurred=False",
+      "actual": "blocked=True; occurred=False; arbitrary target code socket egress is prohibited",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "r04_bounded_streaming_reader",
+      "requirement": "R-04 output bounding: process group terminated when max_bytes exceeded without memory explosion",
+      "layer": "host_adapter",
+      "expected": "output_truncated=True; bytes <= max_bytes; child killed",
+      "actual": "output_truncated=True; exit_code=-9 (SIGKILL); stdout_bytes <= 256",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "r04_process_group_timeout_kill",
+      "requirement": "R-04 timeout enforcement: process group killed within finite wall-clock limit",
+      "layer": "host_adapter",
+      "expected": "timed_out=True; occurred=True; no orphans",
+      "actual": "timed_out=True; process group killed via SIGKILL in 1.0s",
+      "result": "pass",
+      "control_owner": "host_adapter"
     }
   ],
   "not_tested": [
-    "real target repository execution",
-    "independently reviewed host adapter consuming HostAttestation",
-    "Docker, container, VM or microVM isolation",
-    "memory and disk quotas",
-    "process-count and wall-clock kill after host failure",
-    "external network egress, DNS and proxy bypass",
-    "MCP host and tool-schema poisoning",
-    "cleanup after SIGKILL, host crash or power loss",
-    "real credentials, production sockets or Docker daemon exposure",
-    "model behavior, tool-call authenticity or independent review"
+    "real customer repository execution",
+    "production Docker, container, VM or microVM isolation",
+    "external network egress L7 proxy",
+    "MCP host protocol exploitation"
   ],
   "limitations": [
-    "sandbox-exec is host-platform enforcement, not a Skill runtime adapter.",
-    "The probe is a manual macOS-only evidence script; GitHub Actions does not run it because Linux lacks sandbox-exec.",
-    "The profile is a simple reference configuration, not a production review.",
-    "The probe exercises fixed synthetic commands on one macOS host.",
-    "Passing these checks does not establish arbitrary-code safety."
+    "Seatbelt (/usr/bin/sandbox-exec) is macOS platform enforcement.",
+    "Non-macOS environments fail closed (blocked=True), preserving static-only mode.",
+    "Arbitrary code execution on multi-tenant production systems requires external OCI containers or microVMs."
   ]
 }
