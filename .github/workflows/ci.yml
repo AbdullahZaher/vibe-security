@@ -72,6 +72,8 @@ jobs:
           python -m json.tool ../../evals/cases.json > /dev/null
           python -m json.tool ../../evals/fixtures.json > /dev/null
           python -m json.tool policy/action-policy.json > /dev/null
+      - name: Verify evidence artifact hashes (content integrity only)
+        run: python ../../evals/verify_evidence_manifest.py --manifest ../../docs/evaluations/v0.5.0-evidence-manifest.json
       - name: Assert stable release remains BLOCKED without authenticated evidence
         run: |
           set +e
