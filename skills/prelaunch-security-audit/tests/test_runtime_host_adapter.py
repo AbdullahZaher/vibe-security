@@ -934,10 +934,12 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.assertEqual(p2.returncode, 1)
 
     def test_a1_approval_store_corruption_fails_closed(self):
-        """A1: ApprovalStore safe corruption handling fails closed without allowing replay."""
+        """A1: corrupted disk approvals cannot be consumed, even outside dispatch."""
         store_path = self.base / "corrupt_approvals.json"
         store_path.write_text("{{INVALID_JSON_CORRUPT_BYTES", encoding="utf-8")
         store = ApprovalStore(store_path)
+        with self.assertRaises(ValueError):
+            store.consume("a1-req-1", "auth-1", "a" * 64)
 
         adapter = IsolatedHostAdapter(
             self.source_root, self.scratch_root,
@@ -955,7 +957,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         res = adapter.dispatch(req, cmd)
         self.assertTrue(res["blocked"])
         self.assertFalse(res["occurred"])
-        self.assertIn("approval store error", res["reason"])
+        self.assertIn("external isolation supervisor", res["reason"])
 
     def test_a1_approval_store_permissions_secure(self):
         """A1: ApprovalStore enforces 0o600 file permissions and 0o700 directory permissions."""
