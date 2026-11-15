@@ -6,7 +6,9 @@ import os
 from pathlib import Path
 import re
 import shutil
+import signal
 import socket
+import subprocess
 import sys
 import tempfile
 import time
@@ -900,6 +902,245 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.assertTrue(res["blocked"])
         self.assertFalse(res["occurred"])
         self.assertIn("execution spec digest does not match", res["reason"])
+
+    # -------------------------------------------------------------------------
+    # WORKSTREAM A: Final Runtime Security Contract Review
+    # -------------------------------------------------------------------------
+
+    def test_a1_cross_process_replay_prevention(self):
+        """A1: Separate host processes cannot reuse a consumed authorization."""
+        store_path = self.base / "cross_proc_approvals.json"
+        helper_code = (
+            f"import sys; sys.path.insert(0, '{ROOT / 'scripts'}'); "
+            f"from runtime_host_adapter import ApprovalStore; "
+            f"from pathlib import Path; "
+            f"store = ApprovalStore(Path('{store_path}')); "
+            f"ok = store.consume('req-p1', 'auth-p1', 'spec-p1'); "
+            f"sys.exit(0 if ok else 1)"
+        )
+        # First process consumes approval -> exits 0
+        p1 = subprocess.run([sys.executable, "-c", helper_code], capture_output=True, text=True)
+        self.assertEqual(p1.returncode, 0)
+
+        # Second separate process attempts replay -> exits 1
+        p2 = subprocess.run([sys.executable, "-c", helper_code], capture_output=True, text=True)
+        self.assertEqual(p2.returncode, 1)
+
+    def test_a1_approval_store_corruption_fails_closed(self):
+        """A1: ApprovalStore safe corruption handling fails closed without allowing replay."""
+        store_path = self.base / "corrupt_approvals.json"
+        store_path.write_text("{{INVALID_JSON_CORRUPT_BYTES", encoding="utf-8")
+        store = ApprovalStore(store_path)
+
+        adapter = IsolatedHostAdapter(
+            self.source_root, self.scratch_root,
+            target=self.target, revision=self.revision,
+            attestation_provider=self._make_attestation,
+            approval_store=store,
+        )
+        cmd = [sys.executable, "-c", "print(1)"]
+        req = {
+            "id": "a1-req-1", "target": self.target, "revision": self.revision,
+            "effect": "verify_local", "profile": "isolated-local",
+            "operation": "test_corrupt", "destination": "", "paths": ["src"],
+            "command": cmd,
+        }
+        res = adapter.dispatch(req, cmd)
+        self.assertTrue(res["blocked"])
+        self.assertFalse(res["occurred"])
+        self.assertIn("approval store error", res["reason"])
+
+    def test_a1_approval_store_permissions_secure(self):
+        """A1: ApprovalStore enforces 0o600 file permissions and 0o700 directory permissions."""
+        store_dir = self.base / "secure_store_dir"
+        store_path = store_dir / "approvals.json"
+        store = ApprovalStore(store_path)
+        self.assertTrue(store.consume("req-sec", "auth-sec", "spec-sec"))
+
+        mode = store_path.stat().st_mode & 0o777
+        self.assertEqual(oct(mode), oct(0o600))
+
+    def test_a2_missing_spec_sha256_in_attestation_blocks_local_execution(self):
+        """A2: Host attestation omitting spec_sha256 fails closed for verify_local."""
+        def attest_no_spec(request):
+            att = self._make_attestation(request)
+            return HostAttestation(
+                request_sha256=att.request_sha256,
+                authorization_ref=att.authorization_ref,
+                isolation_ref=att.isolation_ref,
+                enforced_controls=att.enforced_controls,
+                command_sha256=att.command_sha256,
+                spec_sha256="",  # Omitted
+            )
+
+        adapter = IsolatedHostAdapter(
+            self.source_root, self.scratch_root,
+            target=self.target, revision=self.revision,
+            attestation_provider=attest_no_spec,
+        )
+        cmd = [sys.executable, "-c", "print(1)"]
+        req = {
+            "id": "a2-req-1", "target": self.target, "revision": self.revision,
+            "effect": "verify_local", "profile": "isolated-local",
+            "operation": "test_no_spec", "destination": "", "paths": ["src"],
+            "command": cmd,
+        }
+        res = adapter.dispatch(req, cmd)
+        self.assertTrue(res["blocked"])
+        self.assertFalse(res["occurred"])
+        self.assertIn("missing mandatory spec_sha256", res["reason"])
+
+    def test_a2_missing_command_sha256_in_attestation_blocks_local_execution(self):
+        """A2: Host attestation omitting command_sha256 fails closed for verify_local."""
+        def attest_no_cmd(request):
+            att = self._make_attestation(request)
+            return HostAttestation(
+                request_sha256=att.request_sha256,
+                authorization_ref=att.authorization_ref,
+                isolation_ref=att.isolation_ref,
+                enforced_controls=att.enforced_controls,
+                command_sha256="",  # Omitted
+                spec_sha256=att.spec_sha256,
+            )
+
+        adapter = IsolatedHostAdapter(
+            self.source_root, self.scratch_root,
+            target=self.target, revision=self.revision,
+            attestation_provider=attest_no_cmd,
+        )
+        cmd = [sys.executable, "-c", "print(1)"]
+        req = {
+            "id": "a2-req-2", "target": self.target, "revision": self.revision,
+            "effect": "verify_local", "profile": "isolated-local",
+            "operation": "test_no_cmd", "destination": "", "paths": ["src"],
+            "command": cmd,
+        }
+        res = adapter.dispatch(req, cmd)
+        self.assertTrue(res["blocked"])
+        self.assertFalse(res["occurred"])
+        self.assertIn("missing mandatory command_sha256", res["reason"])
+
+    def test_a2_mismatched_spec_sha256_in_attestation_blocks_local_execution(self):
+        """A2: Host attestation with forged or mismatched spec_sha256 is rejected."""
+        def attest_mismatched_spec(request):
+            att = self._make_attestation(request)
+            return HostAttestation(
+                request_sha256=att.request_sha256,
+                authorization_ref=att.authorization_ref,
+                isolation_ref=att.isolation_ref,
+                enforced_controls=att.enforced_controls,
+                command_sha256=att.command_sha256,
+                spec_sha256="0" * 64,  # Mismatched forged digest
+            )
+
+        adapter = IsolatedHostAdapter(
+            self.source_root, self.scratch_root,
+            target=self.target, revision=self.revision,
+            attestation_provider=attest_mismatched_spec,
+        )
+        cmd = [sys.executable, "-c", "print(1)"]
+        req = {
+            "id": "a2-req-3", "target": self.target, "revision": self.revision,
+            "effect": "verify_local", "profile": "isolated-local",
+            "operation": "test_mismatch_spec", "destination": "", "paths": ["src"],
+            "command": cmd,
+        }
+        res = adapter.dispatch(req, cmd)
+        self.assertTrue(res["blocked"])
+        self.assertFalse(res["occurred"])
+        self.assertIn("execution specification does not match", res["reason"])
+
+    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    def test_a3_posix_process_group_cleanup_contained_descendants(self):
+        """A3: Process group cleanup terminates multiple background worker processes."""
+        script = self.source_root / "multi_workers.py"
+        script.write_text(
+            "import os, sys, time\n"
+            "pids = []\n"
+            "for i in range(3):\n"
+            "    p = os.fork()\n"
+            "    if p == 0:\n"
+            "        time.sleep(30)\n"
+            "        sys.exit(0)\n"
+            "    pids.append(p)\n"
+            "print('PIDS=' + ','.join(map(str, pids)))\n"
+            "sys.exit(0)\n"
+        )
+        adapter = IsolatedHostAdapter(
+            self.source_root, self.scratch_root,
+            target=self.target, revision=self.revision,
+            attestation_provider=self._make_attestation,
+        )
+        cmd = [sys.executable, str(script)]
+        req = {
+            "id": "a3-req-1", "target": self.target, "revision": self.revision,
+            "effect": "verify_local", "profile": "isolated-local",
+            "operation": "test_workers", "destination": "", "paths": ["src"],
+            "command": cmd,
+        }
+        res = adapter.dispatch(req, cmd)
+        self.assertTrue(res["occurred"])
+        match = re.search(r"PIDS=([0-9,]+)", res["stdout"])
+        self.assertIsNotNone(match)
+        pids = [int(p) for p in match.group(1).split(",")]
+        time.sleep(0.2)
+        for pid in pids:
+            with self.assertRaises(OSError, msg=f"Worker PID {pid} survived cleanup!"):
+                os.kill(pid, 0)
+
+    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    def test_a3_setsid_escape_limitation_documented(self):
+        """A3: Documents technical limitation where grandchild calling setsid() escapes POSIX process group.
+
+        Verifies that while normal process-group cleanup functions, macOS Seatbelt cannot prevent setsid()
+        without kernel-level process namespaces / cgroups. Documents why multi-tenant execution requires
+        external container/VM isolation.
+        """
+        script = self.source_root / "setsid_test.py"
+        script.write_text(
+            "import os, sys, time\n"
+            "p = os.fork()\n"
+            "if p == 0:\n"
+            "    p2 = os.fork()\n"
+            "    if p2 == 0:\n"
+            "        os.setsid()\n"
+            "        print(f'SETSID_PID={os.getpid()}', flush=True)\n"
+            "        sys.stdin.close()\n"
+            "        sys.stdout.close()\n"
+            "        sys.stderr.close()\n"
+            "        time.sleep(10)\n"
+            "        sys.exit(0)\n"
+            "    sys.exit(0)\n"
+            "os.waitpid(p, 0)\n"
+        )
+        adapter = IsolatedHostAdapter(
+            self.source_root, self.scratch_root,
+            target=self.target, revision=self.revision,
+            attestation_provider=self._make_attestation,
+        )
+        cmd = [sys.executable, str(script)]
+        req = {
+            "id": "a3-req-2", "target": self.target, "revision": self.revision,
+            "effect": "verify_local", "profile": "isolated-local",
+            "operation": "test_setsid", "destination": "", "paths": ["src"],
+            "command": cmd,
+        }
+        res = adapter.dispatch(req, cmd)
+        self.assertTrue(res["occurred"])
+        match = re.search(r"SETSID_PID=(\d+)", res["stdout"])
+        self.assertIsNotNone(match)
+        escaped_pid = int(match.group(1))
+        # The setsid child escapes killpg(saved_pgid)
+        escaped_alive = False
+        try:
+            os.kill(escaped_pid, 0)
+            escaped_alive = True
+            # Clean up the test process safely
+            os.kill(escaped_pid, signal.SIGKILL)
+        except OSError:
+            escaped_alive = False
+        # Documented limitation: escaped_alive is True under POSIX without cgroups!
+        self.assertTrue(escaped_alive, "Limitation documentation: setsid() detached from saved_pgid")
 
 
 

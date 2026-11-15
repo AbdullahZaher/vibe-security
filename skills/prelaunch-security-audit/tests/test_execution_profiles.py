@@ -41,10 +41,11 @@ class TestExecutionProfiles(unittest.TestCase):
         self.assertEqual(assess(r, attest=lambda r: authority)['status'], 'blocked')
 
     def test_local_write_needs_full_isolation_controls(self):
-        r = request(profile='isolated-local', effect='modify_local')
-        authority = HostAttestation(digest(r), 'owner', 'reviewed-os-log', CONTROLS - {'filesystem'})
+        cmd = ['touch', 'file.txt']
+        r = request(profile='isolated-local', effect='modify_local', command=cmd, spec_sha256='spec-hash-1')
+        authority = HostAttestation(digest(r), 'owner', 'reviewed-os-log', CONTROLS - {'filesystem'}, command_sha256=digest(cmd), spec_sha256='spec-hash-1')
         self.assertEqual(assess(r, attest=lambda r: authority)['status'], 'not_verified')
-        authority = HostAttestation(digest(r), 'owner', 'reviewed-os-log', CONTROLS)
+        authority = HostAttestation(digest(r), 'owner', 'reviewed-os-log', CONTROLS, command_sha256=digest(cmd), spec_sha256='spec-hash-1')
         self.assertEqual(assess(r, attest=lambda r: authority)['status'], 'eligible_for_host_dispatch')
 
     def test_isolated_local_needs_controls_for_network_and_external_write(self):
@@ -57,14 +58,30 @@ class TestExecutionProfiles(unittest.TestCase):
             self.assertEqual(assess(r, attest=lambda r: authority)['status'], 'eligible_for_host_dispatch')
 
     def test_docker_name_or_missing_isolation_controls_never_suffice(self):
-        r = request(profile='isolated-local', effect='verify_local')
+        cmd = ['pytest', 'tests/']
+        r = request(profile='isolated-local', effect='verify_local', command=cmd, spec_sha256='spec-hash-2')
         for missing in CONTROLS:
-            authority = HostAttestation(digest(r), 'owner', 'docker-installed', CONTROLS - {missing})
+            authority = HostAttestation(digest(r), 'owner', 'docker-installed', CONTROLS - {missing}, command_sha256=digest(cmd), spec_sha256='spec-hash-2')
             self.assertEqual(assess(r, attest=lambda r: authority)['status'], 'not_verified')
-        authority = HostAttestation(digest(r), 'owner', 'reviewed-os-log', CONTROLS)
+        authority = HostAttestation(digest(r), 'owner', 'reviewed-os-log', CONTROLS, command_sha256=digest(cmd), spec_sha256='spec-hash-2')
         result = assess(r, attest=lambda r: authority)
         self.assertEqual(result['status'], 'eligible_for_host_dispatch')
         self.assertFalse(result['execution_performed'])
+
+    def test_missing_spec_or_command_sha256_for_verify_local_fails_closed(self):
+        cmd = ['pytest', 'tests/']
+        r = request(profile='isolated-local', effect='verify_local', command=cmd, spec_sha256='spec-hash-2')
+        # Missing spec_sha256 in attestation
+        auth_no_spec = HostAttestation(digest(r), 'owner', 'reviewed-os-log', CONTROLS, command_sha256=digest(cmd), spec_sha256='')
+        res1 = assess(r, attest=lambda r: auth_no_spec)
+        self.assertEqual(res1['status'], 'not_verified')
+        self.assertIn('missing mandatory spec_sha256', res1['reason'])
+
+        # Missing command_sha256 in attestation
+        auth_no_cmd = HostAttestation(digest(r), 'owner', 'reviewed-os-log', CONTROLS, command_sha256='', spec_sha256='spec-hash-2')
+        res2 = assess(r, attest=lambda r: auth_no_cmd)
+        self.assertEqual(res2['status'], 'not_verified')
+        self.assertIn('missing mandatory command_sha256', res2['reason'])
 
     def test_destructive_always_blocked(self):
         self.assertEqual(assess(request(effect='destructive', profile='isolated-local'))['status'], 'blocked')
