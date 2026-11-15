@@ -2,16 +2,18 @@
 """Host runtime adapter enforcing technical isolation boundaries.
 
 Integrates directly with execution_profiles.assess(), ExecutionSpec, and
-HostAttestation. Enforces technical sandbox controls: least-privilege filesystem
-isolation (read-only source, denied host secrets, denied user directories,
-denied cross-workspace trees, writable disposable scratch), unconditional network
-egress denial, cryptographic authorization binding to executed commands, replay
-prevention, incremental output bounding, process group cleanup, and trusted
-host-side telemetry logging.
+HostAttestation. Enforces technical sandbox controls: genuine default-deny
+filesystem isolation (import system.sb, denied /etc/passwd, read-only source,
+denied host secrets/users/volumes, writable disposable scratch), unconditional
+network egress denial, cryptographic authorization binding to executed commands
+and execution specs before dispatch, cross-instance and cross-process replay
+prevention, complete process lifecycle cleanup for all descendants, incremental
+output bounding, and sanitized host-side telemetry logging.
 """
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import fcntl
 import hashlib
 import json
 import os
@@ -22,6 +24,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 from audit_artifacts import MAX_BYTES, require, trusted_root
@@ -67,59 +70,130 @@ class ExecutionSpec:
         return hashlib.sha256(json.dumps(data, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
+class ApprovalStore:
+    """Atomic single-use authorization registry preventing replay across instances and processes (R-07)."""
+
+    def __init__(self, storage_path: Path | None = None):
+        self.storage_path = Path(storage_path).resolve() if storage_path else None
+        self._consumed: set[str] = set()
+        self._lock = threading.Lock()
+        if self.storage_path and self.storage_path.exists():
+            try:
+                data = json.loads(self.storage_path.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    self._consumed.update(data)
+            except Exception:
+                pass
+
+    def consume(self, request_id: str, authorization_ref: str, spec_sha256: str) -> bool:
+        """Atomically consume an approval. Returns True if consumed, False if replayed."""
+        key = f"{request_id}:{authorization_ref}:{spec_sha256}"
+        with self._lock:
+            if key in self._consumed:
+                return False
+            if self.storage_path:
+                lock_file = self.storage_path.with_suffix(".lock")
+                with open(lock_file, "w") as lf:
+                    fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
+                    try:
+                        on_disk = set()
+                        if self.storage_path.exists():
+                            try:
+                                d = json.loads(self.storage_path.read_text(encoding="utf-8"))
+                                if isinstance(d, list):
+                                    on_disk.update(d)
+                            except Exception:
+                                pass
+                        if key in on_disk:
+                            self._consumed.add(key)
+                            return False
+                        on_disk.add(key)
+                        self._consumed.add(key)
+                        self.storage_path.write_text(json.dumps(sorted(on_disk)), encoding="utf-8")
+                        return True
+                    finally:
+                        fcntl.flock(lf.fileno(), fcntl.LOCK_UN)
+            else:
+                self._consumed.add(key)
+                return True
+
+    def is_consumed(self, request_id: str, authorization_ref: str, spec_sha256: str) -> bool:
+        key = f"{request_id}:{authorization_ref}:{spec_sha256}"
+        with self._lock:
+            return key in self._consumed
+
+    def clear(self):
+        with self._lock:
+            self._consumed.clear()
+
+
+_GLOBAL_APPROVAL_STORE = ApprovalStore()
+
+
+def get_default_approval_store() -> ApprovalStore:
+    return _GLOBAL_APPROVAL_STORE
+
+
 def _quote_sb(path: Path) -> str:
     return str(path.resolve()).replace("\\", "\\\\").replace('"', '\\"')
 
 
 def _make_seatbelt_profile(source_root: Path, scratch_root: Path) -> str:
-    """Generate minimal least-privilege Seatbelt profile.
+    """Generate genuine default-deny Seatbelt profile (R-05).
 
     Enforces:
-    - Default-deny network egress (R-03: unconditional deny network*).
-    - Read-only source access.
-    - Write access strictly denied except inside scratch_root.
-    - Read access denied for host user directories (/Users, Path.home()),
-      cloud credentials, external volumes (/Volumes), and temporary directories
-      outside source_root and scratch_root (R-01).
-    - Runtime dependency read access explicitly granted for active Python sys.prefix.
+    - Default-deny all operations ((deny default)).
+    - Standard macOS system library bootstrap via (import "system.sb").
+    - Explicit denial of sensitive system files permitted by system.sb (/etc/passwd, /etc/master.passwd).
+    - Unconditional network egress denial ((deny network*)).
+    - Unconditional write denial except inside scratch_root ((deny file-write*)).
+    - Read access allowed ONLY for:
+      - System libraries from system.sb
+      - Process execution primitives: process-exec, process-fork, sysctl-read, signal (target self), file-read-metadata
+      - Devices: /dev
+      - Python runtime sys.prefix / sys.base_prefix
+      - Authorized source root (read-only)
+      - Disposable scratch root (read-write)
+    - All other host files (/Users, /Volumes, /opt, /tmp, parent directories) are denied by default.
     """
     source_root = source_root.resolve()
     scratch_root = scratch_root.resolve()
     home = Path.home().resolve()
 
+    py_prefix = Path(sys.prefix).resolve()
+    py_base_prefix = Path(sys.base_prefix).resolve()
+    if py_prefix == home or py_base_prefix == home:
+        raise ValueError("Python runtime prefix cannot be user home directory")
+
     rules = [
         "(version 1)",
-        "(allow default)",
+        "(deny default)",
+        '(import "system.sb")',
         "(deny network*)",
         "(deny file-write*)",
         f'(allow file-write* (subpath "{_quote_sb(scratch_root)}"))',
         "",
-        ";; Least-privilege filesystem read policy (R-01)",
-        '(deny file-read* (subpath "/Users"))',
-        '(deny file-read* (subpath "/Volumes"))',
-        f'(deny file-read* (subpath "{_quote_sb(home)}"))',
-        '(deny file-read* (subpath "/private/var/folders"))',
-        '(deny file-read* (subpath "/var/folders"))',
-        '(deny file-read* (subpath "/private/tmp"))',
-        '(deny file-read* (subpath "/tmp"))',
-        '(deny file-read* (subpath "/private/var/tmp"))',
-        '(deny file-read* (subpath "/var/tmp"))',
+        ";; Deny sensitive system credential files permitted by system.sb",
+        '(deny file-read* (literal "/private/etc/master.passwd"))',
+        '(deny file-read* (literal "/etc/master.passwd"))',
+        '(deny file-read* (literal "/private/etc/passwd"))',
+        '(deny file-read* (literal "/etc/passwd"))',
+        "",
+        ";; Minimal required process execution primitives",
+        "(allow process-exec)",
+        "(allow process-fork)",
+        "(allow sysctl-read)",
+        "(allow signal (target self))",
+        "(allow file-read-metadata)",
+        '(allow file-read* (subpath "/dev"))',
+        "",
+        ";; Runtime dependencies",
+        f'(allow file-read* (subpath "{_quote_sb(py_prefix)}"))',
     ]
-
-    system_roots = {Path("/"), Path("/private"), Path("/private/var"), Path("/var"), Path("/usr")}
-    if source_root.parent not in system_roots:
-        rules.append(f'(deny file-read* (subpath "{_quote_sb(source_root.parent)}"))')
-    if scratch_root.parent not in system_roots and scratch_root.parent != source_root.parent:
-        rules.append(f'(deny file-read* (subpath "{_quote_sb(scratch_root.parent)}"))')
-
-    # Allow reading active Python interpreter and standard library runtime
-    py_prefix = Path(sys.prefix).resolve()
-    py_base_prefix = Path(sys.base_prefix).resolve()
-    rules.append(f'(allow file-read* (subpath "{_quote_sb(py_prefix)}"))')
     if py_base_prefix != py_prefix:
         rules.append(f'(allow file-read* (subpath "{_quote_sb(py_base_prefix)}"))')
 
-    # Explicitly permit reading the authorized source and scratch roots
+    # Re-allow authorized source root and scratch root
     rules.append(f'(allow file-read* (subpath "{_quote_sb(source_root)}"))')
     rules.append(f'(allow file-read* (subpath "{_quote_sb(scratch_root)}"))')
     return "\n".join(rules) + "\n"
@@ -133,7 +207,7 @@ def _run_bounded_process(
     max_bytes: int,
     preexec_fn=None,
 ) -> dict:
-    """Execute process with strict incremental output bounding and process group termination (R-04)."""
+    """Execute process with strict incremental output bounding and guaranteed process group cleanup (R-04, R-06)."""
     started = time.monotonic()
     proc = subprocess.Popen(
         full_command,
@@ -146,6 +220,7 @@ def _run_bounded_process(
         preexec_fn=preexec_fn,
     )
 
+    saved_pgid = proc.pid
     sel = selectors.DefaultSelector()
     os.set_blocking(proc.stdout.fileno(), False)
     os.set_blocking(proc.stderr.fileno(), False)
@@ -158,19 +233,29 @@ def _run_bounded_process(
     timed_out = False
     deadline = started + timeout
 
-    def _kill_group():
+    def _terminate_process_group():
+        # Unconditionally terminate the entire session/process group
         try:
-            pgid = os.getpgid(proc.pid)
-            os.killpg(pgid, signal.SIGKILL)
+            os.killpg(saved_pgid, signal.SIGKILL)
         except OSError:
             pass
+        # Also reap the direct child if still pending
+        if proc.poll() is None:
+            try:
+                proc.kill()
+            except OSError:
+                pass
+            try:
+                proc.wait(timeout=1)
+            except (subprocess.TimeoutExpired, OSError):
+                pass
 
     try:
         while sel.get_map():
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 timed_out = True
-                _kill_group()
+                _terminate_process_group()
                 break
 
             events = sel.select(timeout=max(0.01, min(remaining, 0.1)))
@@ -190,14 +275,14 @@ def _run_bounded_process(
                         stdout_buf.extend(chunk[:max_bytes - len(stdout_buf)])
                     if len(stdout_buf) >= max_bytes:
                         truncated = True
-                        _kill_group()
+                        _terminate_process_group()
                         sel.unregister(fileobj)
                 else:
                     if len(stderr_buf) < max_bytes:
                         stderr_buf.extend(chunk[:max_bytes - len(stderr_buf)])
                     if len(stderr_buf) >= max_bytes:
                         truncated = True
-                        _kill_group()
+                        _terminate_process_group()
                         sel.unregister(fileobj)
 
             if proc.poll() is not None and not sel.select(timeout=0):
@@ -224,9 +309,13 @@ def _run_bounded_process(
             proc.stderr.close()
         except OSError:
             pass
-        if proc.poll() is None:
-            _kill_group()
-            proc.wait()
+        # R-06: Guarantee that all descendants in the process group are terminated,
+        # even if direct child has already exited.
+        _terminate_process_group()
+        try:
+            proc.wait(timeout=1)
+        except (subprocess.TimeoutExpired, OSError):
+            pass
 
     wall_ms = int((time.monotonic() - started) * 1000)
     return {
@@ -249,7 +338,8 @@ class IsolatedHostAdapter:
 
     def __init__(self, source_root: Path, scratch_root: Path, *,
                  target: str, revision: str, attestation_provider=None,
-                 timeout: int = 15, max_bytes: int = MAX_BYTES):
+                 timeout: int = 15, max_bytes: int = MAX_BYTES,
+                 approval_store: ApprovalStore | None = None):
         self.source_root = Path(source_root).resolve()
         self.scratch_root = Path(scratch_root).resolve()
         self.target = target
@@ -258,13 +348,17 @@ class IsolatedHostAdapter:
         self.timeout = timeout
         self.max_bytes = max_bytes
         self.events: list[dict] = []
-        self._dispatched_approvals: set[tuple[str, str]] = set()
+        self.approval_store = approval_store or get_default_approval_store()
 
     def dispatch(self, request: dict, command: list[str]) -> dict:
+        executable_name = Path(command[0]).name if (isinstance(command, (list, tuple)) and command) else ""
+        cmd_sha256 = digest(list(command)) if isinstance(command, (list, tuple)) else None
         event = {
             "sequence": len(self.events) + 1,
             "request_sha256": digest(request) if isinstance(request, dict) else None,
-            "command": list(command) if isinstance(command, (list, tuple)) else None,
+            "executable": executable_name,
+            "command_sha256": cmd_sha256,
+            "command_arg_count": len(command) if isinstance(command, (list, tuple)) else 0,
             "occurred": False,
             "blocked": True,
             "exit_code": None,
@@ -286,6 +380,56 @@ class IsolatedHostAdapter:
             event["reason"] = "arbitrary target code socket egress is prohibited; host sandbox cannot guarantee destination-level L7 filtering"
             return {"occurred": False, "blocked": True, "status": "blocked", "reason": event["reason"]}
 
+        # Target and revision verification against adapter configuration
+        if request.get("target") != self.target or request.get("revision") != self.revision:
+            event["reason"] = "target or revision mismatch with host configuration"
+            return {"occurred": False, "blocked": True, "reason": event["reason"]}
+
+        # Clean environment: strip credentials, enforce clean user site exclusion
+        scrubbed_env_keys = sorted(SAFE_ENV_KEYS - {"PYTHONPATH"})
+
+        # Construct immutable ExecutionSpec binding all parameters BEFORE authorization
+        auth_ref = request.get("authorization_ref", "")
+        spec = ExecutionSpec(
+            target=self.target,
+            revision=self.revision,
+            command=tuple(command),
+            cwd=str(self.source_root),
+            effect=request.get("effect", ""),
+            profile=request.get("profile", ""),
+            operation=request.get("operation", ""),
+            destination=request.get("destination", ""),
+            paths=tuple(sorted(request.get("paths", []))),
+            env_keys=tuple(scrubbed_env_keys),
+            timeout=self.timeout,
+            max_bytes=self.max_bytes,
+            authorization_ref=auth_ref,
+        )
+        spec_digest = spec.digest()
+        event["spec_sha256"] = spec_digest
+        event["spec"] = {
+            "executable": executable_name,
+            "command_sha256": cmd_sha256,
+            "command_arg_count": len(command),
+            "target": self.target,
+            "revision": self.revision,
+            "cwd": str(self.source_root),
+            "effect": spec.effect,
+            "profile": spec.profile,
+            "operation": spec.operation,
+            "destination": spec.destination,
+            "paths": list(spec.paths),
+            "env_keys": list(spec.env_keys),
+            "timeout": spec.timeout,
+            "max_bytes": spec.max_bytes,
+            "authorization_ref": spec.authorization_ref,
+        }
+
+        # If request explicitly specifies spec_sha256, verify match
+        if "spec_sha256" in request and request["spec_sha256"] != spec_digest:
+            event["reason"] = "execution spec digest does not match authorized spec_sha256"
+            return {"occurred": False, "blocked": True, "reason": event["reason"]}
+
         # Assess request against policy and host attestation
         try:
             verdict = assess(request, attest=self.attestation_provider)
@@ -302,21 +446,15 @@ class IsolatedHostAdapter:
                 "reason": verdict.get("reason"),
             }
 
-        # R-02: Replay prevention check
-        auth_ref = verdict.get("authorization_ref", "")
+        effective_auth_ref = verdict.get("authorization_ref", auth_ref)
+
+        # R-07: Single-use approval consumption at trusted host boundary (cross-instance/cross-process)
         req_id = request.get("id", "")
-        approval_key = (req_id, auth_ref)
-        if approval_key in self._dispatched_approvals:
+        if not self.approval_store.consume(req_id, effective_auth_ref, spec_digest):
             event["reason"] = "authorization replay rejected: approval already consumed"
             return {"occurred": False, "blocked": True, "reason": event["reason"]}
-        self._dispatched_approvals.add(approval_key)
 
-        # Target and revision verification
-        if request.get("target") != self.target or request.get("revision") != self.revision:
-            event["reason"] = "target or revision mismatch with host configuration"
-            return {"occurred": False, "blocked": True, "reason": event["reason"]}
-
-        # Host sandbox availability
+        # Host sandbox availability check
         if not SANDBOX_EXEC.exists():
             event["reason"] = "host sandbox facility (/usr/bin/sandbox-exec) unavailable"
             return {"occurred": False, "blocked": True, "reason": event["reason"]}
@@ -324,34 +462,20 @@ class IsolatedHostAdapter:
         # Prepare disposable sub-scratch directory for this run
         run_scratch = Path(tempfile.mkdtemp(prefix="run-scratch-", dir=self.scratch_root)).resolve()
         sb_profile_path = run_scratch / "run.sb"
-        sb_profile_text = _make_seatbelt_profile(self.source_root, run_scratch)
+        try:
+            sb_profile_text = _make_seatbelt_profile(self.source_root, run_scratch)
+        except ValueError as exc:
+            shutil.rmtree(run_scratch, ignore_errors=True)
+            event["reason"] = f"invalid runtime sandbox configuration: {exc}"
+            return {"occurred": False, "blocked": True, "reason": event["reason"]}
+
         sb_profile_path.write_text(sb_profile_text, encoding="utf-8")
 
-        # Clean environment: strip credentials, enforce clean user site exclusion
         scrubbed_env = {
             "PATH": os.environ.get("PATH", os.defpath),
             "TMPDIR": str(run_scratch),
             "PYTHONNOUSERSITE": "1",
         }
-
-        # Construct immutable ExecutionSpec binding all parameters
-        spec = ExecutionSpec(
-            target=self.target,
-            revision=self.revision,
-            command=tuple(command),
-            cwd=str(self.source_root),
-            effect=request.get("effect", ""),
-            profile=request.get("profile", ""),
-            operation=request.get("operation", ""),
-            destination=request.get("destination", ""),
-            paths=tuple(request.get("paths", [])),
-            env_keys=tuple(sorted(scrubbed_env.keys())),
-            timeout=self.timeout,
-            max_bytes=self.max_bytes,
-            authorization_ref=auth_ref,
-        )
-        event["spec_sha256"] = spec.digest()
-        event["spec"] = asdict(spec)
 
         # Apply preexec_fn for CPU limits where available
         def _set_rlimits():

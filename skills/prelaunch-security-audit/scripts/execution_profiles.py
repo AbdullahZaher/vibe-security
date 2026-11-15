@@ -39,11 +39,12 @@ class HostAttestation:
     isolation_ref: str = ''
     enforced_controls: frozenset[str] = frozenset()
     command_sha256: str = ''
+    spec_sha256: str = ''
 
 
 def validate_request(request):
     expected = {'id', 'target', 'revision', 'effect', 'profile', 'operation', 'destination', 'paths'}
-    optional = {'command'}
+    optional = {'command', 'spec_sha256', 'authorization_ref'}
     if not isinstance(request, dict) or not (expected <= set(request) <= (expected | optional)):
         raise ValueError('request must have exactly the documented fields; approval flags are not authority')
     if any(not isinstance(request[k], str) or not request[k].strip()
@@ -62,6 +63,12 @@ def validate_request(request):
             not isinstance(c, str) or not c.strip() for c in request['command']
         ):
             raise ValueError('command must be a non-empty list of non-empty strings')
+    if 'spec_sha256' in request:
+        if not isinstance(request['spec_sha256'], str) or not request['spec_sha256'].strip():
+            raise ValueError('spec_sha256 must be a non-empty string')
+    if 'authorization_ref' in request:
+        if not isinstance(request['authorization_ref'], str) or not request['authorization_ref'].strip():
+            raise ValueError('authorization_ref must be a non-empty string')
     if request['effect'] in {'network_read', 'external_write'} and not request['destination']:
         raise ValueError('remote operation needs exact destination')
     if request['effect'] in {'observe', 'verify_local', 'modify_local'} and not request['paths']:
@@ -90,6 +97,10 @@ def assess(request, *, attest=None):
         cmd = request.get('command')
         if not cmd or digest(cmd) != authority.command_sha256:
             return {**result, 'reason': 'command does not match authorized command_sha256'}
+    if authority.spec_sha256:
+        spec_sha = request.get('spec_sha256')
+        if not spec_sha or spec_sha != authority.spec_sha256:
+            return {**result, 'reason': 'execution specification does not match authorized spec_sha256'}
     if request['effect'] in {'verify_local', 'modify_local', 'network_read', 'external_write'}:
         if (request['profile'] != 'isolated-local' or not authority.isolation_ref
                 or not CONTROLS <= authority.enforced_controls):
