@@ -69,6 +69,9 @@ class Probe:
 
     def add(self, ident, layer, command, expected, observed, ok, *, exit_code=None,
             stderr=b"", extra=None):
+        if stderr and isinstance(observed, dict):
+            observed = {**observed,
+                        "operation_not_permitted_marker": b"Operation not permitted" in stderr}
         self.results.append({
             "id": ident, "layer": layer, "command": command, "expected": expected,
             "observed": observed, "result": "pass" if ok else "fail",
@@ -150,7 +153,7 @@ def main() -> int:
                       {"exit_code": baseline["exit_code"]}, baseline["exit_code"] == 0,
                       exit_code=baseline["exit_code"])
             probe.sandboxed("os_network_loopback_denied",
-                            ["/usr/bin/nc", "-z", "-G", "2", "127.0.0.1", str(port)], "any",
+                            ["/usr/bin/nc", "-v", "-z", "-G", "2", "127.0.0.1", str(port)], "any",
                             check=lambda c: baseline["exit_code"] == 0
                             and c["exit_code"] not in (0, None))
 
