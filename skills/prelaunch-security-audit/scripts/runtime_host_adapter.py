@@ -101,6 +101,17 @@ class ApprovalStore:
             raise PermissionError("approval store directory must be host-owned mode 0700")
         return parent
 
+    def _private_dir_fd(self) -> int:
+        """Pin a private registry directory by file descriptor before any I/O."""
+        parent = self._private_parent()
+        fd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        meta = os.fstat(fd)
+        if (not stat.S_ISDIR(meta.st_mode) or meta.st_uid != os.getuid()
+                or meta.st_mode & 0o077):
+            os.close(fd)
+            raise PermissionError("approval directory changed or is not private")
+        return fd
+
     @staticmethod
     def _checked_file(fd: int, label: str) -> None:
         meta = os.fstat(fd)
@@ -108,30 +119,38 @@ class ApprovalStore:
                 or meta.st_mode & 0o077):
             raise PermissionError(f"{label} must be host-owned regular file mode 0600")
 
-    def _load_from_disk(self) -> set[str]:
+    def _load_from_disk(self, dir_fd: int | None = None) -> set[str]:
         if self.storage_path is None:
             return set()
-        self._private_parent()
+        owns_dir_fd = dir_fd is None
+        if dir_fd is None:
+            dir_fd = self._private_dir_fd()
         try:
-            fd = os.open(self.storage_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-        except FileNotFoundError:
-            return set()
-        try:
-            self._checked_file(fd, "approval store")
-            with os.fdopen(fd, "rb", closefd=False) as file:
-                raw = file.read(4_000_001)
-            if len(raw) > 4_000_000:
-                raise ValueError("approval store exceeds bounded size limit")
-            if not raw:
-                raise ValueError("approval store unexpectedly empty")
-            data = json.loads(raw.decode("utf-8"))
-            if (not isinstance(data, list) or len(data) > 20000
-                    or any(not isinstance(v, str) or not 1 <= len(v) <= 512 for v in data)
-                    or len(set(data)) != len(data)):
-                raise ValueError("invalid approval store schema")
-            return set(data)
+            try:
+                fd = os.open(self.storage_path.name,
+                             os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                             dir_fd=dir_fd)
+            except FileNotFoundError:
+                return set()
+            try:
+                self._checked_file(fd, "approval store")
+                with os.fdopen(fd, "rb", closefd=False) as file:
+                    raw = file.read(4_000_001)
+                if len(raw) > 4_000_000:
+                    raise ValueError("approval store exceeds bounded size limit")
+                if not raw:
+                    raise ValueError("approval store unexpectedly empty")
+                data = json.loads(raw.decode("utf-8"))
+                if (not isinstance(data, list) or len(data) > 20000
+                        or any(not isinstance(v, str) or not 1 <= len(v) <= 512 for v in data)
+                        or len(set(data)) != len(data)):
+                    raise ValueError("invalid approval store schema")
+                return set(data)
+            finally:
+                os.close(fd)
         finally:
-            os.close(fd)
+            if owns_dir_fd:
+                os.close(dir_fd)
 
     def consume(self, request_id: str, authorization_ref: str, spec_sha256: str) -> bool:
         """Single-use durable consumption with private files, flock and fsync."""
@@ -149,43 +168,47 @@ class ApprovalStore:
             if self.storage_path is None:
                 self._consumed.add(key)
                 return True
-            parent = self._private_parent()
-            lock_name = self.storage_path.name + ".lock"
-            lock_fd = os.open(parent / lock_name,
-                              os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+            dir_fd = self._private_dir_fd()
             try:
-                self._checked_file(lock_fd, "approval lock")
-                fcntl.flock(lock_fd, fcntl.LOCK_EX)
+                lock_name = self.storage_path.name + ".lock"
+                lock_fd = os.open(lock_name,
+                                  os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK,
+                                  0o600, dir_fd=dir_fd)
                 try:
-                    on_disk = self._load_from_disk()
-                    if key in on_disk:
-                        self._consumed.add(key)
-                        return False
-                    on_disk.add(key)
-                    if len(on_disk) > 20000:
-                        raise ValueError("approval store capacity exceeded; fail closed")
-                    tmp_path = parent / (f".{self.storage_path.name}." + secrets.token_hex(16) + ".tmp")
-                    tmp_fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
-                                     os.O_NOFOLLOW, 0o600)
+                    self._checked_file(lock_fd, "approval lock")
+                    fcntl.flock(lock_fd, fcntl.LOCK_EX)
                     try:
-                        with os.fdopen(tmp_fd, "w", encoding="utf-8") as stream:
-                            json.dump(sorted(on_disk), stream)
-                            stream.flush()
-                            os.fsync(stream.fileno())
-                        os.replace(tmp_path, self.storage_path)
-                        dir_fd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                        on_disk = self._load_from_disk(dir_fd=dir_fd)
+                        if key in on_disk:
+                            self._consumed.add(key)
+                            return False
+                        on_disk.add(key)
+                        if len(on_disk) > 20000:
+                            raise ValueError("approval store capacity exceeded; fail closed")
+                        tmp_name = f".{self.storage_path.name}." + secrets.token_hex(16) + ".tmp"
+                        tmp_fd = os.open(tmp_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                                         os.O_NOFOLLOW, 0o600, dir_fd=dir_fd)
                         try:
+                            with os.fdopen(tmp_fd, "w", encoding="utf-8") as stream:
+                                json.dump(sorted(on_disk), stream)
+                                stream.flush()
+                                os.fsync(stream.fileno())
+                            os.replace(tmp_name, self.storage_path.name,
+                                       src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
                             os.fsync(dir_fd)
                         finally:
-                            os.close(dir_fd)
+                            try:
+                                os.unlink(tmp_name, dir_fd=dir_fd)
+                            except FileNotFoundError:
+                                pass
+                        self._consumed.add(key)
+                        return True
                     finally:
-                        tmp_path.unlink(missing_ok=True)
-                    self._consumed.add(key)
-                    return True
+                        fcntl.flock(lock_fd, fcntl.LOCK_UN)
                 finally:
-                    fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                    os.close(lock_fd)
             finally:
-                os.close(lock_fd)
+                os.close(dir_fd)
 
     def is_consumed(self, request_id: str, authorization_ref: str, spec_sha256: str) -> bool:
         key = f"{request_id}:{authorization_ref}:{spec_sha256}"
