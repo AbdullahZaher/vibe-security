@@ -13,6 +13,8 @@
   is supplied or claimed; plan_guard remains advisory.
 - Add conservative revision/dependency impact analysis, budget accounting and
   explicit unknown/deferred work; add focused optional AI/tool-boundary guidance.
+- Bound artifact sizes/nesting, require UTF-8 JSON, reject symlink/traversal
+  escapes, and create reports privately without overwriting existing files.
 - Integrate optional artifacts into legacy 27-control reports. Unsupported PASS
   rows now downgrade individually; duplicate finding IDs are rejected. Existing
   report shape remains accepted; see migration guide for evidence additions.

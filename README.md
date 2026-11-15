@@ -71,7 +71,8 @@ mode, without Docker, MCP, scanners or paid APIs.
 
 See [migration and usage](docs/v0.5.0-artifact-guide.md), the unchanged
 [implementation plan](docs/v0.5.0-improvement-plan.md), and
-[evaluation protocol](docs/v0.5.0-evaluation-protocol.md). Stable release is blocked
+[evaluation protocol](docs/v0.5.0-evaluation-protocol.md), and
+[implementation and validation report](docs/v0.5.0-implementation-report.md). Stable release is blocked
 pending genuine independently adjudicated A/B/C trials and security maintainer
 review. Software tests establish implementation behavior, not improved recall or
 false-positive rates.
