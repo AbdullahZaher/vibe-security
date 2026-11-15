@@ -231,7 +231,9 @@ Protocol fields are exact; unexpected fields fail validation:
   `arms`, `budget`, `required_reviews`.
 - Each case has `id`, exact `source_revision`, `architecture`, private answer-key
   `ground_truth_sha256`, authorized `scope_sha256`, and boolean `holdout`.
-  At least two repositories/architectures and one unseen holdout are required.
+  Pilot validation requires at least two repositories/architectures and one unseen
+  holdout. Release review requires at least five cases and three repetitions, as
+  frozen in docs/v0.5.0-evaluation-protocol.md.
   Hashes identify evidence; they do not prove independence or ground truth.
 - `arms` maps `A` to `no_skill`, `B` to the frozen v0.4 baseline Skill SHA, and
   `C` to the frozen candidate Skill SHA. The two Skill revisions must differ.

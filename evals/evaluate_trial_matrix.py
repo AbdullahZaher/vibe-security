@@ -9,11 +9,16 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from datetime import datetime
 import hashlib
 import json
 import math
 from pathlib import Path
 import re
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills/prelaunch-security-audit/scripts"))
+from audit_artifacts import load_json
 
 ARMS = {'A', 'B', 'C'}
 SHA = re.compile(r'[0-9a-f]{40}|[0-9a-f]{64}')
@@ -36,6 +41,12 @@ def validate_protocol(protocol):
     exact(protocol, 'version id frozen_at cases arms repetitions budget required_reviews', 'protocol')
     if protocol['version'] != '0.5.0' or not nonempty(protocol['id']) or not nonempty(protocol['frozen_at']):
         raise ValueError('invalid protocol identity')
+    try:
+        frozen = datetime.fromisoformat(protocol['frozen_at'].replace('Z', '+00:00'))
+    except ValueError as exc:
+        raise ValueError('invalid frozen protocol timestamp') from exc
+    if frozen.tzinfo is None:
+        raise ValueError('frozen protocol timestamp needs timezone')
     if type(protocol['repetitions']) is not int or not 2 <= protocol['repetitions'] <= 100:
         raise ValueError('protocol requires repeated trials (2-100)')
     exact(protocol['budget'], 'max_steps max_output_tokens max_cost_usd', 'budget')
@@ -74,7 +85,10 @@ def evaluate(protocol, trials, *, attest=None):
     protocol_hash = fingerprint(protocol)
     blocked = []
     trust = lambda kind, record: attest is not None and attest(kind, record) is True
-    if not trust('frozen_protocol', protocol):
+    protocol_trusted = trust('frozen_protocol', protocol)
+    if len(cases) < 5 or protocol['repetitions'] < 3:
+        blocked.append('Pilot matrix below frozen release protocol minimum: five cases and three repetitions')
+    if not protocol_trusted:
         blocked.append('Frozen ground truth, holdout separation and authorization not independently authenticated')
     counts = Counter()
     ids, contexts, log_hashes, slots = set(), set(), set(), set()
@@ -159,7 +173,7 @@ def evaluate(protocol, trials, *, attest=None):
     metrics = {}
     for arm in sorted(ARMS):
         selected = [t for t in trials if t['arm'] == arm]
-        valid = selected and all(t['status'] == 'completed'
+        valid = protocol_trusted and selected and all(t['status'] == 'completed'
             and t['evidence_origin'] == 'real_agent_host_logs'
             and trust('host_logs', t) and trust('adjudication', t)
             and all(v is not None for v in t['findings'].values()) for t in selected)
@@ -181,9 +195,7 @@ def main():
     p.add_argument('--trials', type=Path, required=True)
     args = p.parse_args()
     try:
-        if any(f.stat().st_size > 5_000_000 for f in (args.protocol, args.trials)):
-            raise ValueError('input too large')
-        result = evaluate(json.loads(args.protocol.read_text()), json.loads(args.trials.read_text()))
+        result = evaluate(load_json(args.protocol), load_json(args.trials))
     except (OSError, ValueError) as exc:
         p.error(str(exc))
     print(json.dumps(result, indent=2))

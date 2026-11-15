@@ -15,6 +15,8 @@ from pathlib import Path, PurePosixPath
 import re
 import stat
 
+from audit_artifacts import load_json
+
 EFFECTS = {'observe', 'verify_local', 'network_read', 'modify_local', 'external_write', 'destructive'}
 PROFILES = {'static-only', 'isolated-local', 'authorized-staging'}
 CONTROLS = frozenset({'filesystem', 'secrets', 'sockets', 'network_egress', 'resource_limits',
@@ -154,9 +156,7 @@ def main():
     parser.add_argument('--request', type=Path, required=True)
     args = parser.parse_args()
     try:
-        if args.request.stat().st_size > 100_000:
-            raise ValueError('request too large')
-        result = assess(json.loads(args.request.read_text(encoding='utf-8')))
+        result = assess(load_json(args.request))
     except (ValueError, OSError) as exc:
         parser.error(str(exc))
     print(json.dumps(result, indent=2))
