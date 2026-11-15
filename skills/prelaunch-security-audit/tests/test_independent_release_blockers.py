@@ -18,6 +18,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from execution_profiles import CONTROLS, HostAttestation, digest
 from runtime_host_adapter import ApprovalStore, IsolatedHostAdapter, RUNTIME_EXECUTION_ENABLED
+sys.path.insert(0, str(ROOT.parents[1] / "evals"))
+from release_readiness_gate import evaluate_claims
 
 
 class IndependentReleaseBlockerTests(unittest.TestCase):
@@ -122,6 +124,27 @@ class IndependentReleaseBlockerTests(unittest.TestCase):
         adapter.dispatch(request, command)
         self.assertNotIn(secret_marker, json.dumps(adapter.events))
         self.assertIn("destination_sha256", adapter.events[-1]["spec"])
+
+    def test_claimed_full_metrics_cannot_approve_stable(self):
+        metrics = {"conditions": {
+            arm: {"real_trials_completed": 15, "source_revision": "a" * 40}
+            for arm in ("A", "B", "C")
+        }}
+        metrics["conditions"]["A"].pop("source_revision")
+        result = evaluate_claims(metrics)
+        self.assertFalse(result["stable_release_ready"])
+        self.assertFalse(result["independent_human_signoff_verified"])
+        self.assertEqual(result["protocol_minimum"]["expected_independent_trials"], 45)
+
+    def test_mutable_candidate_and_three_sessions_stay_blocked(self):
+        metrics = {"conditions": {
+            arm: {"real_trials_completed": 1, "source_revision": "a" * 40}
+            for arm in ("A", "B", "C")
+        }}
+        metrics["conditions"]["C"]["source_revision"] = "feat/unstable"
+        result = evaluate_claims(metrics)
+        self.assertTrue(any("mutable" in b for b in result["blockers"]))
+        self.assertTrue(any("fewer than" in b for b in result["blockers"]))
 
 
 if __name__ == "__main__":
