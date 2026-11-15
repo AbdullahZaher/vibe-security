@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "skills/prelaunch-security-audit/scripts"))
 from audit_artifacts import bounded_command  # noqa: E402
 from execution_profiles import CONTROLS, HostAttestation, StaticHost, assess, digest  # noqa: E402
-from runtime_host_adapter import IsolatedHostAdapter  # noqa: E402
+from runtime_host_adapter import IsolatedHostAdapter, RUNTIME_EXECUTION_ENABLED  # noqa: E402
 
 SANDBOX = Path("/usr/bin/sandbox-exec")
 MAX_WALL = 15
@@ -232,11 +232,20 @@ def main() -> int:
                     "operation": "test_echo", "destination": "", "paths": ["source.txt"],
                     "command": cmd_auth}
         disp_res = adapter.dispatch(req_auth, cmd_auth)
-        probe.add("adapter_authorized_execution_allowed", "host_adapter",
-                  "IsolatedHostAdapter.dispatch(verify_local)", 0,
-                  {"exit_code": disp_res.get("exit_code"), "occurred": disp_res.get("occurred")},
-                  disp_res.get("occurred") is True and disp_res.get("exit_code") == 0,
-                  exit_code=disp_res.get("exit_code"))
+        if not RUNTIME_EXECUTION_ENABLED:
+            probe.add("adapter_untrusted_execution_disabled", "host_adapter",
+                      "IsolatedHostAdapter.dispatch(verify_local)", "blocked, no execution",
+                      {"blocked": disp_res.get("blocked"),
+                       "occurred": disp_res.get("occurred"),
+                       "reason": disp_res.get("reason")},
+                      disp_res.get("blocked") is True and disp_res.get("occurred") is False
+                      and "external isolation supervisor" in disp_res.get("reason", ""))
+        else:
+            probe.add("adapter_authorized_execution_allowed", "host_adapter",
+                      "IsolatedHostAdapter.dispatch(verify_local)", 0,
+                      {"exit_code": disp_res.get("exit_code"), "occurred": disp_res.get("occurred")},
+                      disp_res.get("occurred") is True and disp_res.get("exit_code") == 0,
+                      exit_code=disp_res.get("exit_code"))
 
         unauth_adapter = IsolatedHostAdapter(fixture, scratch, target="synthetic", revision="a" * 40,
                                              attestation_provider=lambda _r: None)
