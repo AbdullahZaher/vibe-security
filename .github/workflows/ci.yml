@@ -1,7 +1,7 @@
 name: Verify Agent Skill
 on:
   push:
-    branches: [main]
+    branches: [main, feat/prelaunch-security-audit-v0.5.0-plan-20261114]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -68,6 +68,7 @@ jobs:
         run: |
           python -m json.tool assets/findings.example.json > /dev/null
           python -m json.tool assets/findings.schema.json > /dev/null
+          python -c 'import json,pathlib; [json.loads(p.read_text()) for p in pathlib.Path("assets").glob("*.schema.json")]'
           python -m json.tool ../../evals/cases.json > /dev/null
           python -m json.tool ../../evals/fixtures.json > /dev/null
           python -m json.tool policy/action-policy.json > /dev/null

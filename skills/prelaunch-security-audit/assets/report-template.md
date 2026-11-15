@@ -17,6 +17,19 @@
 - Open approvals:
 - Unverified areas:
 
+## Discovery, coverage and verification
+- Inventory target/revision; discovery methods and explicit enumeration limits:
+- Discovered in-scope inventory units (not the total system attack surface):
+- Covered / partially covered / blocked / deferred / unassessed / N/A ledger units:
+- Inventory units missing ledger assessment:
+- Unknown assets outside inventory (never infer zero):
+- Finding verdicts: confirmed / needs_validation / rejected:
+- Severity, confidence and verification tier (separately):
+- Reviewer/context; self-review or host-verified independence:
+- Budget profile/configured limits; actual measured usage or unknown:
+- Execution profile; scoped authorization and independently verified isolation:
+- Remediation invariants; baseline/post-fix/adjacent tests; rollback and residual risk:
+
 ## 27-Point Control Matrix
 | ID | Control | Status | Severity | Evidence | Fix | Test result | Owner action |
 |---|---|---|---|---|---|---|---|

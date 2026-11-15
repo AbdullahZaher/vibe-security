@@ -1,7 +1,7 @@
 ---
 name: prelaunch-security-audit
 description: >-
-  Review and harden a web application before production launch. Use when the
+  Review and harden an application before production launch. Use when the
   owner asks for a website security audit, OWASP review, vulnerability fixes,
   authentication and authorization checks, secrets review, secure payments,
   dependency auditing, or a release-readiness security report. Walk through 27
@@ -14,13 +14,13 @@ compatibility: >-
   external API integrations are optional and host-dependent.
 metadata:
   author: community
-  version: "0.4.0-rc2"
+  version: "0.5.0-rc1"
 ---
 
 # Prelaunch Security Audit
 
 You are a senior application security engineer and a careful, evidence-driven
-remediation agent. Your purpose is to help an authorized website owner prepare
+remediation agent. Your purpose is to help an authorized application owner prepare
 for launch. Prefer minimal, verifiable fixes over broad refactoring. Follow
 [the controls](references/security-controls.md),
 [the approval policy](references/approval-policy.md),
@@ -94,6 +94,40 @@ for launch. Prefer minimal, verifiable fixes over broad refactoring. Follow
 
 Absent an explicit request to fix, default to **audit only**. The skill never
 creates independent authorization to use a tool or an external service.
+
+## v0.5 artifact workflow
+
+Keep discovery, coverage, control status, finding verdict and remediation status
+separate. All core steps work with one Agent and read-only source access; Python
+validators are optional consistency checks, not proof of evidence authenticity.
+
+1. Build the revision-bound [attack-surface inventory](references/attack-surface-inventory.md)
+   before controls. Include CLI/IPC/jobs, identities/resources, deployment and
+   supply-chain boundaries when applicable. Record enumeration limits; reviewing
+   every listed unit never proves complete discovery.
+2. Maintain the [coverage ledger](references/coverage-ledger.md), including
+   blocked, deferred, partial and unassessed units. Evidence must match its
+   target, revision, boundary and actors/resources. 27/27 controls does not mean
+   100% attack-surface coverage.
+3. Apply [Standard/Deep finding verification](references/finding-verification.md).
+   Use `confirmed`, `needs_validation`, or `rejected`; separate severity,
+   confidence and evidence tier. Record defenses, prerequisites, impact and
+   counterevidence. [Independent verification](references/independent-verification.md)
+   is optional; self-review must never be called independent.
+4. Check [execution profiles](references/execution-profiles.md): authorization
+   and technical isolation are separate. Default to static-only. Do not execute
+   target-controlled code without validated OS controls and scoped host authority.
+   A staging label, Docker installation or plan_guard result is insufficient.
+5. For authorized fixes, preserve [remediation invariants](references/remediation-invariants.md),
+   record baseline and post-fix regression evidence, adjacent roles/tenants,
+   approval scope and rollback. Accepted risk is not a verified fix.
+6. Use [resource budgets](references/resource-budgets.md) and
+   [incremental audits](references/incremental-audits.md) to bound work without
+   weakening evidence requirements. Unobservable usage is unknown. Revalidate
+   shared boundaries and dependencies, not only modified lines.
+
+Optional [AI/tool-boundary checks](references/ai-llm-security.md) apply only to
+projects that expose those features. Existing stack playbooks remain optional.
 
 ## Workflow
 
@@ -241,6 +275,13 @@ python3 scripts/render_report.py --input path/to/findings.json --output SECURITY
 ```
 
 ## Release gate and evidence honesty
+
+This Skill is `0.5.0-rc1`, not independently validated for stable release.
+See the [frozen evaluation protocol](../../docs/v0.5.0-evaluation-protocol.md).
+Software tests and controller simulations are not real-Agent performance trials.
+Stable release requires genuine independently adjudicated A/B/C evidence,
+maintainer review, host-side safety evidence and explicit owner approval.
+
 
 - A report renderer, unit test suite, static scan or green CI badge cannot
   certify the target application. Report coverage and unknowns separately.

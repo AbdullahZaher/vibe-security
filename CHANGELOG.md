@@ -1,3 +1,25 @@
+## v0.5.0-rc1 — engineering candidate (2026-11-14, feature branch)
+
+- Add strict, revision-bound inventory and coverage schemas/validators with
+  deterministic IDs, explicit discovery limits, source-blob integrity and
+  evidence scope/actor/resource linkage; reject misleading completeness claims.
+- Add Standard/Deep finding adjudication with separate verdict, severity,
+  confidence and tier, retained history comparison and optional trusted-host
+  independence checks. Static proof remains supported.
+- Add remediation invariant preservation, exact scoped approval, baseline,
+  post-fix and adjacent role/resource verification requirements.
+- Separate authorization from execution isolation; provide a capability-limited
+  static host and host-observed denial regressions. No arbitrary-code OS sandbox
+  is supplied or claimed; plan_guard remains advisory.
+- Add conservative revision/dependency impact analysis, budget accounting and
+  explicit unknown/deferred work; add focused optional AI/tool-boundary guidance.
+- Integrate optional artifacts into legacy 27-control reports. Unsupported PASS
+  rows now downgrade individually; duplicate finding IDs are rejected. Existing
+  report shape remains accepted; see migration guide for evidence additions.
+- Add A/B/C protocol and release-gate infrastructure; synthetic/controller tests
+  cannot satisfy stable release. Actual model trials and independent maintainer
+  review remain pending. No vulnerability-detection performance claim is made.
+
 ## v0.4.0-rc2 — general-purpose audit hardening (proposed, unmerged)
 
 - Add adaptive, hypothesis-driven attack-surface discovery before the 27 controls,

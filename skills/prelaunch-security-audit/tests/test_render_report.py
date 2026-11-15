@@ -36,7 +36,8 @@ class TestReport(unittest.TestCase):
             "test_method": "unit regression test", "evidence": "tests/test_auth.py::test_logout",
             "evidence_revision": "deadbeef",
         })
-        self.assertIn("| 01 | Authentication | fixed_verified |", render(data))
+        # v0.5 preserves the shape but downgrades a claim without its own log.
+        self.assertIn("| 01 | Authentication | not_verified |", render(data))
 
     def test_secret_redacted_and_pipes_escaped(self):
         self.assertNotIn("ghp_" + "Z" * 30, sanitized("ghp_" + "Z" * 30))
@@ -89,6 +90,10 @@ class TestReport(unittest.TestCase):
             "test_method": "pytest tests/auth.py", "evidence_tier": "build",
             "evidence_revision": "deadbeef"
         })
+        self.data["controls"][0]["verification_ref"] = "V-auth"
+        self.data["verification_log"] = [{"id": "V-auth", "control_id": "01",
+            "revision": "deadbeef", "result": "pass", "method": "pytest tests/auth.py",
+            "environment": "disposable", "observed": "unauthorized request rejected"}]
         output = render(self.data)
         self.assertIn("| 01 | Authentication | pass |", output)
         self.assertIn("build @ deadbeef", output)
@@ -235,6 +240,32 @@ class TestReport(unittest.TestCase):
         self.data["verification_log"][0]["finding_id"] = "F-SEC"
         verified = render(self.data)
         self.assertIn("Resolution: fixed_verified", verified)
+
+    def test_duplicate_finding_ids_cannot_share_resolution(self):
+        self.data["findings"] = [{"id": "F1", "severity": "high"}] * 2
+        with self.assertRaisesRegex(ValueError, "finding IDs must be unique"):
+            render(self.data)
+
+    def test_pass_row_rejects_other_controls_log(self):
+        self.data["scope"]["revision"] = "abc"
+        self.data["controls"][0].update(status="pass", test_result="pass",
+            evidence="tests/auth.py", test_method="pytest", evidence_tier="build",
+            evidence_revision="abc", verification_ref="other")
+        self.data["verification_log"] = [{"id": "other", "control_id": "02",
+            "revision": "abc", "result": "pass", "method": "pytest",
+            "environment": "local", "observed": "pass"}]
+        self.assertIn("| 01 | Authentication | not_verified |", render(self.data))
+
+    def test_artifact_scope_cannot_be_laundered(self):
+        self.data["attack_surface"] = {"target": "foreign", "revision": "other"}
+        self.data["coverage_ledger"] = {}
+        with self.assertRaisesRegex(ValueError, "target/revision"):
+            render(self.data)
+
+    def test_partial_artifact_pair_fails_closed(self):
+        self.data["attack_surface"] = {}
+        with self.assertRaisesRegex(ValueError, "supplied together"):
+            render(self.data)
 
     def test_rejects_missing_control(self):
         self.data["controls"].pop()

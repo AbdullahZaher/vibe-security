@@ -164,3 +164,18 @@ For benchmark-informed design decisions, see `../../docs/benchmark-and-design-re
 See [review-modes.md](references/review-modes.md) and [stack-playbooks.md](references/stack-playbooks.md). The report now links high/critical finding resolution to a matching-revision verification log. It does **not** authenticate log contents.
 
 Agent evaluation: use [evals/README.md](../../evals/README.md) for the offline host-trace scoring format. The 20 cases are specifications; no real agent behavior benchmark is claimed.
+
+## v0.5.0-rc1 artifacts and portability
+
+Use the [artifact guide](../../docs/v0.5.0-artifact-guide.md) for new schemas,
+validators, optional report integration and legacy evidence migration. Core
+workflows remain single-Agent and static-only, without language/framework,
+Docker, MCP, database or paid API prerequisites. New source verification uses
+immutable Git blobs; missing source/tool authority remains explicit.
+
+A verified fix now requires preserved invariants, baseline/post-fix and adjacent
+role/resource evidence, exact scoped approval and rollback. Independent review
+and executed evidence require trusted host provenance; JSON flags cannot supply
+it. The static broker proves only its narrow read/deny behavior and provides no
+arbitrary-code sandbox. Stable release remains blocked pending independent
+security review and genuine A/B/C evaluations.
