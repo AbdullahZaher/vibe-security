@@ -11,11 +11,9 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
-import selectors
 import subprocess
-import time
 
-from audit_artifacts import safe_relative_path
+from audit_artifacts import safe_relative_path, bounded_command as _bounded_metadata
 
 SHA = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})\Z")
 DEPENDENCY_NAMES = frozenset({"package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock",
@@ -32,33 +30,6 @@ def _revision(value):
     if not isinstance(value, str) or not SHA.fullmatch(value):
         raise ValueError("revision must be a full immutable Git SHA")
     return value
-
-
-def _bounded_metadata(command, env, max_bytes=2_000_000, timeout=30):
-    """Drain metadata incrementally; target metadata cannot allocate unbounded output."""
-    deadline = time.monotonic() + timeout
-    chunks = bytearray()
-    with subprocess.Popen(command, env=env, stdout=subprocess.PIPE,
-                          stderr=subprocess.DEVNULL) as process:
-        try:
-            with selectors.DefaultSelector() as selector:
-                selector.register(process.stdout, selectors.EVENT_READ)
-                while True:
-                    remaining = deadline - time.monotonic()
-                    if remaining <= 0 or not selector.select(remaining):
-                        raise ValueError("Git metadata read timed out")
-                    part = os.read(process.stdout.fileno(), min(65536, max_bytes + 1 - len(chunks)))
-                    if not part:
-                        break
-                    chunks.extend(part)
-                    if len(chunks) > max_bytes:
-                        raise ValueError("Git metadata exceeds limit; narrow the reviewed scope")
-            code = process.wait(timeout=max(0.001, deadline - time.monotonic()))
-        except BaseException:
-            process.kill()
-            process.wait()
-            raise
-    return subprocess.CompletedProcess(command, code, bytes(chunks), b"")
 
 
 def _git(root, *args, check=True):

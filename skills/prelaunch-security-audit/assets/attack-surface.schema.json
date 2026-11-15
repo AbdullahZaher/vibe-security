@@ -1,0 +1,252 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "0.5"
+    },
+    "target": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "pattern": "\\S"
+    },
+    "revision": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "discovery": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "pattern": "\\S"
+        },
+        "status": {
+          "enum": [
+            "unknown",
+            "partial",
+            "enumerated"
+          ]
+        },
+        "methods": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "pattern": "\\S"
+          },
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "pattern": "\\S"
+          },
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true
+        },
+        "unknown_outside_inventory": {
+          "const": true
+        }
+      },
+      "required": [
+        "scope",
+        "status",
+        "methods",
+        "limitations",
+        "unknown_outside_inventory"
+      ],
+      "additionalProperties": false
+    },
+    "units": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "pattern": "\\S"
+          },
+          "component": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "pattern": "\\S"
+          },
+          "kind": {
+            "enum": [
+              "http",
+              "rpc",
+              "webhook",
+              "job",
+              "queue",
+              "cli",
+              "ipc",
+              "mobile",
+              "ai_tool",
+              "identity",
+              "data_store",
+              "outbound",
+              "build",
+              "deployment",
+              "other"
+            ]
+          },
+          "entry_point": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "pattern": "\\S"
+          },
+          "boundary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "pattern": "\\S"
+          },
+          "actors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000,
+              "pattern": "\\S"
+            },
+            "minItems": 1,
+            "maxItems": 10000,
+            "uniqueItems": true
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000,
+              "pattern": "\\S"
+            },
+            "minItems": 1,
+            "maxItems": 10000,
+            "uniqueItems": true
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4000,
+                "pattern": "\\S"
+              },
+              "line_start": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "line_end": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "revision": {
+                "type": "string",
+                "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+              },
+              "status": {
+                "enum": [
+                  "verified",
+                  "not_verified"
+                ]
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^([0-9a-f]{64})?$"
+              }
+            },
+            "required": [
+              "path",
+              "line_start",
+              "line_end",
+              "revision",
+              "status",
+              "sha256"
+            ],
+            "additionalProperties": false
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "pattern": "\\S"
+          },
+          "discovery_method": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "pattern": "\\S"
+          },
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "unknown"
+            ]
+          },
+          "reachability": {
+            "enum": [
+              "external",
+              "internal",
+              "unreachable",
+              "unknown"
+            ]
+          },
+          "discovery_status": {
+            "enum": [
+              "identified",
+              "inspected",
+              "not_verified"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "component",
+          "kind",
+          "entry_point",
+          "boundary",
+          "actors",
+          "resources",
+          "source",
+          "reason",
+          "discovery_method",
+          "confidence",
+          "reachability",
+          "discovery_status"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "maxItems": 10000,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "target",
+    "revision",
+    "discovery",
+    "units"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Revision-bound discovered attack surface; never universal completeness"
+}
