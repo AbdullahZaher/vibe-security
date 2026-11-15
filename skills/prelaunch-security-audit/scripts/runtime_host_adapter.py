@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-"""Host runtime adapter enforcing technical isolation boundaries.
+"""Fail-closed authorization and private approval-store implementation.
 
-Integrates directly with execution_profiles.assess(), ExecutionSpec, and
-HostAttestation. Enforces technical sandbox controls: genuine default-deny
-filesystem isolation (import system.sb, denied /etc/passwd, read-only source,
-denied host secrets/users/volumes, writable disposable scratch), unconditional
-network egress denial, cryptographic authorization binding to executed commands
-and execution specs before dispatch, cross-instance and cross-process replay
-prevention, complete process lifecycle cleanup for all descendants, incremental
-output bounding, and sanitized host-side telemetry logging.
+The previous macOS Seatbelt subprocess runner cannot safely contain detached
+setsid() descendants or guarantee memory/disk/PID quotas. It is intentionally
+not reachable from IsolatedHostAdapter.dispatch. The remaining historical
+profile and bounded-process helpers are diagnostic code only, not a certified
+sandbox, and must not be wired to untrusted agent execution.
 """
 from __future__ import annotations
 
@@ -319,7 +316,7 @@ def _run_bounded_process(
     max_bytes: int,
     preexec_fn=None,
 ) -> dict:
-    """Execute process with strict incremental output bounding and guaranteed process group cleanup (R-04, R-06)."""
+    """Legacy helper: bounds streams and kills one process group; NOT a sandbox or detached-process containment."""
     started = time.monotonic()
     proc = subprocess.Popen(
         full_command,
@@ -441,11 +438,10 @@ def _run_bounded_process(
 
 
 class IsolatedHostAdapter:
-    """Technically enforced execution adapter for prelaunch security audit dispatch.
+    """Fail-closed adapter: validates authorization but never launches target code.
 
-    Dispatches commands ONLY when authorized by execution_profiles.assess(),
-    structurally bound via ExecutionSpec, and validated by HostAttestation.
-    Enforces technical boundaries at dispatch and retains trusted host-side telemetry.
+    Retains metadata about attempted execution. Only StaticHost source reads are
+    available in this release candidate. External VM supervision is not bundled.
     """
 
     def __init__(self, source_root: Path, scratch_root: Path, *,
@@ -570,93 +566,3 @@ class IsolatedHostAdapter:
         # Seatbelt code path; no approval is burned for a refused operation.
         event["reason"] = "untrusted code execution disabled; external isolation supervisor not implemented"
         return {"occurred": False, "blocked": True, "reason": event["reason"]}
-
-        effective_auth_ref = verdict.get("authorization_ref", auth_ref)
-
-        # R-07 / A1: Single-use approval consumption at trusted host boundary (cross-instance/cross-process)
-        req_id = request.get("id", "")
-        try:
-            if not self.approval_store.consume(req_id, effective_auth_ref, spec_digest):
-                event["reason"] = "authorization replay rejected: approval already consumed"
-                return {"occurred": False, "blocked": True, "reason": event["reason"]}
-        except Exception as exc:
-            event["reason"] = f"approval store error (fail-closed): {exc}"
-            return {"occurred": False, "blocked": True, "reason": event["reason"]}
-
-        # Fail closed: Seatbelt and POSIX process groups cannot contain detached
-        # setsid() descendants or enforce complete memory/disk/PID quotas.
-        # This dormant legacy executor requires a separately verified external
-        # VM/microVM execution supervisor before any untrusted code may run.
-        # The legacy branch below remains unreachable; it must be deleted or
-        # replaced by a separately verified supervisor before re-enabling execution.
-
-        # Host sandbox availability check
-        if not SANDBOX_EXEC.exists():
-            event["reason"] = "host sandbox facility (/usr/bin/sandbox-exec) unavailable"
-            return {"occurred": False, "blocked": True, "reason": event["reason"]}
-
-        # Prepare disposable sub-scratch directory for this run
-        run_scratch = Path(tempfile.mkdtemp(prefix="run-scratch-", dir=self.scratch_root)).resolve()
-        sb_profile_path = run_scratch / "run.sb"
-        try:
-            sb_profile_text = _make_seatbelt_profile(self.source_root, run_scratch)
-        except ValueError as exc:
-            shutil.rmtree(run_scratch, ignore_errors=True)
-            event["reason"] = f"invalid runtime sandbox configuration: {exc}"
-            return {"occurred": False, "blocked": True, "reason": event["reason"]}
-
-        sb_profile_path.write_text(sb_profile_text, encoding="utf-8")
-
-        scrubbed_env = {
-            "PATH": os.environ.get("PATH", os.defpath),
-            "TMPDIR": str(run_scratch),
-            "PYTHONNOUSERSITE": "1",
-        }
-
-        # Apply preexec_fn for CPU limits where available
-        def _set_rlimits():
-            try:
-                import resource
-                resource.setrlimit(resource.RLIMIT_CPU, (10, 15))
-            except (ImportError, OSError):
-                pass
-
-        full_command = [str(SANDBOX_EXEC), "-f", str(sb_profile_path), *command]
-        try:
-            run_res = _run_bounded_process(
-                full_command,
-                cwd=str(self.source_root),
-                env=scrubbed_env,
-                timeout=self.timeout,
-                max_bytes=self.max_bytes,
-                preexec_fn=_set_rlimits if os.name != "nt" else None,
-            )
-
-            stdout_bytes = run_res["stdout_bytes"]
-            stderr_bytes = run_res["stderr_bytes"]
-            stdout_str = stdout_bytes.decode("utf-8", errors="replace")
-            stderr_str = stderr_bytes.decode("utf-8", errors="replace")
-
-            event.update({
-                "occurred": True,
-                "blocked": False,
-                "exit_code": run_res["exit_code"],
-                "timed_out": run_res["timed_out"],
-                "wall_ms": run_res["wall_ms"],
-                "stdout_sha256": hashlib.sha256(stdout_bytes).hexdigest(),
-                "stderr_sha256": hashlib.sha256(stderr_bytes).hexdigest(),
-                "output_truncated": run_res["truncated"],
-            })
-
-            return {
-                "occurred": True,
-                "blocked": False,
-                "exit_code": run_res["exit_code"],
-                "stdout": stdout_str,
-                "stderr": stderr_str,
-                "timed_out": run_res["timed_out"],
-                "wall_ms": run_res["wall_ms"],
-                "output_truncated": run_res["truncated"],
-            }
-        finally:
-            shutil.rmtree(run_scratch, ignore_errors=True)
