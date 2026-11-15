@@ -31,6 +31,10 @@ def load_bounded(path: Path) -> object:
 
 def plan(protocol: dict, trials: list | None = None) -> dict:
     cases = validate_protocol(protocol)
+    # Distinct case labels alone do not prove distinct frozen repositories.
+    revisions = [record["source_revision"] for record in cases.values()]
+    if len(set(revisions)) != len(revisions):
+        raise ValueError("duplicate case source revisions cannot count as independent targets")
     if len(cases) < 5 or protocol["repetitions"] < 3:
         raise ValueError("release requires >=5 cases and >=3 repetitions")
     if any(protocol["budget"][k] == "unknown" for k in
