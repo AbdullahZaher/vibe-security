@@ -109,6 +109,10 @@ def load_json(path):
     def invalid(value):
         raise ValueError(f"invalid JSON number: {value}")
     raw = read_artifact(path.parent, path.name)
+    try:
+        decoded = raw.decode("utf-8")
+    except UnicodeError as exc:
+        raise ValueError("artifact JSON must be UTF-8") from exc
     # Bound nesting before decoding; JSON parser recursion limits vary by host.
     depth, quoted, escaped = 0, False, False
     for char in raw:
@@ -127,7 +131,7 @@ def load_json(path):
         elif char in (93, 125):
             depth -= 1
     try:
-        return json.loads(raw, object_pairs_hook=pairs, parse_constant=invalid)
+        return json.loads(decoded, object_pairs_hook=pairs, parse_constant=invalid)
     except (RecursionError, UnicodeError) as exc:
         raise ValueError("invalid or excessively nested JSON") from exc
 

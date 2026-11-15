@@ -1,5 +1,6 @@
 """Host-side artifact path and bounded input/output regressions."""
 import os
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -43,6 +44,16 @@ class ArtifactIOTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exceeds limit'):
             bounded_command([sys.executable, '-c', 'print("x" * 5000)'],
                             {'PATH': os.defpath}, max_bytes=100)
+
+    def test_non_utf8_encoding_cannot_bypass_depth_guard(self):
+        path = self.root / 'encoded.json'
+        # Escaped quotes in UTF-16 confuse a byte-oriented quote/depth scanner.
+        body = json.dumps(['"', 0]).replace('0', '[' * 200 + '0' + ']' * 200)
+        path.write_bytes(body.encode('utf-16'))
+        with self.assertRaisesRegex(ValueError, 'UTF-8'): load_json(path)
+        data = ['[' * 200, 'quoted " and escaped backslash \\']
+        path.write_text(json.dumps(data), encoding='utf-8')
+        self.assertEqual(load_json(path), data)
 
     def test_nonfinite_numeric_api_values_and_deep_json_fail_closed(self):
         with patch('audit_artifacts.load_json', return_value={'type': 'number'}):
