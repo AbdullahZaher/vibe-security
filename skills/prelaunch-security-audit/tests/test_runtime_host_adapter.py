@@ -1,8 +1,10 @@
 """Comprehensive regression and hardening tests for IsolatedHostAdapter (R-01 through R-04)."""
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
+import re
 import shutil
 import socket
 import sys
@@ -17,9 +19,11 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from execution_profiles import CONTROLS, HostAttestation, digest  # noqa: E402
 from runtime_host_adapter import (  # noqa: E402
     SANDBOX_EXEC,
+    ApprovalStore,
     ExecutionSpec,
     IsolatedHostAdapter,
     _make_seatbelt_profile,
+    get_default_approval_store,
 )
 
 
@@ -33,6 +37,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.scratch_root.mkdir()
         self.target = "synthetic-repo"
         self.revision = "a" * 40
+        get_default_approval_store().clear()
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -40,12 +45,14 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
     def _make_attestation(self, request):
         cmd = request.get("command")
         cmd_sha = digest(cmd) if cmd else ""
+        spec_sha = request.get("spec_sha256", "")
         return HostAttestation(
             request_sha256=digest(request),
             authorization_ref="auth-ref-12345",
             isolation_ref="iso-ref-67890",
             enforced_controls=CONTROLS,
             command_sha256=cmd_sha,
+            spec_sha256=spec_sha,
         )
 
     # -------------------------------------------------------------------------
@@ -407,7 +414,10 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         event = adapter.events[-1]
         self.assertIn("spec_sha256", event)
         self.assertIn("spec", event)
-        self.assertEqual(list(event["spec"]["command"]), cmd)
+        self.assertEqual(event["spec"]["command_sha256"], digest(cmd))
+        self.assertEqual(event["spec"]["executable"], Path(cmd[0]).name)
+        self.assertEqual(event["spec"]["command_arg_count"], len(cmd))
+        self.assertNotIn("command", event)
         self.assertEqual(event["spec"]["target"], self.target)
         self.assertEqual(event["spec"]["revision"], self.revision)
 
@@ -662,6 +672,234 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
             self.assertTrue(res["blocked"])
             self.assertFalse(res["occurred"])
             self.assertIn("host sandbox facility", res["reason"])
+
+    # -------------------------------------------------------------------------
+    # R-05: Genuine default-deny filesystem read isolation
+    # -------------------------------------------------------------------------
+
+    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    def test_r05_default_deny_blocks_unallowlisted_paths(self):
+        """R-05: Genuine default-deny blocks reads to unallowlisted host files (/etc/passwd, synthetic secrets)."""
+        secret_file = self.base / "external_secret.txt"
+        secret_file.write_text("OUTSIDE_DENYLIST_SECRET\n")
+
+        test_script = self.source_root / "read_tests.py"
+        test_script.write_text(
+            f"try:\n"
+            f"    open('{secret_file}').read()\n"
+            f"    print('LEAKED_SECRET')\n"
+            f"except Exception:\n"
+            f"    pass\n"
+            f"try:\n"
+            f"    open('/etc/passwd').read()\n"
+            f"    print('LEAKED_PASSWD')\n"
+            f"except Exception:\n"
+            f"    pass\n"
+            f"print('CHECK_FINISHED')\n"
+        )
+        adapter = IsolatedHostAdapter(
+            self.source_root, self.scratch_root,
+            target=self.target, revision=self.revision,
+            attestation_provider=self._make_attestation
+        )
+        cmd = [sys.executable, str(test_script)]
+        req = {
+            "id": "r05-req-1", "target": self.target, "revision": self.revision,
+            "effect": "verify_local", "profile": "isolated-local",
+            "operation": "test_r05", "destination": "", "paths": ["src"],
+            "command": cmd,
+        }
+        res = adapter.dispatch(req, cmd)
+        self.assertTrue(res["occurred"])
+        self.assertEqual(res["exit_code"], 0)
+        self.assertNotIn("LEAKED_SECRET", res["stdout"])
+        self.assertNotIn("LEAKED_PASSWD", res["stdout"])
+        self.assertIn("CHECK_FINISHED", res["stdout"])
+
+    def test_r05_profile_has_genuine_default_deny(self):
+        """R-05: Seatbelt profile begins with (deny default) and does not permit allow default."""
+        profile_text = _make_seatbelt_profile(self.source_root, self.scratch_root)
+        self.assertIn("(deny default)", profile_text)
+        self.assertNotIn("(allow default)", profile_text)
+        self.assertIn("(deny network*)", profile_text)
+        self.assertIn("(deny file-write*)", profile_text)
+
+    def test_r05_py_prefix_equal_home_fails_closed(self):
+        """R-05: If Python runtime prefix matches user home, dispatch fails closed."""
+        with patch("runtime_host_adapter.sys") as mock_sys:
+            mock_sys.prefix = str(Path.home())
+            mock_sys.base_prefix = str(Path.home())
+            with self.assertRaises(ValueError):
+                _make_seatbelt_profile(self.source_root, self.scratch_root)
+
+    # -------------------------------------------------------------------------
+    # R-06: Complete process lifecycle cleanup & descendant termination
+    # -------------------------------------------------------------------------
+
+    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    def test_r06_parent_exit_terminates_background_grandchild(self):
+        """R-06: Grandchild process spawned by direct child is terminated when direct child exits."""
+        script = self.source_root / "spawn_child.py"
+        script.write_text(
+            "import subprocess, sys, time\n"
+            "p = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])\n"
+            "print(f'GRANDCHILD_PID={p.pid}', flush=True)\n"
+            "sys.exit(0)\n"
+        )
+        adapter = IsolatedHostAdapter(
+            self.source_root, self.scratch_root,
+            target=self.target, revision=self.revision,
+            attestation_provider=self._make_attestation
+        )
+        cmd = [sys.executable, str(script)]
+        req = {
+            "id": "r06-req-1", "target": self.target, "revision": self.revision,
+            "effect": "verify_local", "profile": "isolated-local",
+            "operation": "test_r06", "destination": "", "paths": ["src"],
+            "command": cmd,
+        }
+        res = adapter.dispatch(req, cmd)
+        self.assertTrue(res["occurred"])
+        self.assertEqual(res["exit_code"], 0)
+        m = re.search(r"GRANDCHILD_PID=(\d+)", res["stdout"])
+        self.assertIsNotNone(m, f"Could not find grandchild PID in stdout: {res['stdout']}")
+        gpid = int(m.group(1))
+        # Verify grandchild PID is dead
+        time.sleep(0.2)
+        try:
+            os.kill(gpid, 0)
+            alive = True
+        except OSError:
+            alive = False
+        self.assertFalse(alive, f"Descendant process {gpid} survived direct child exit!")
+
+    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    def test_r06_grandchild_closing_pipes_terminated(self):
+        """R-06: Grandchild closing pipes is terminated cleanly without hanging."""
+        script = self.source_root / "spawn_close.py"
+        script.write_text(
+            "import subprocess, sys, time\n"
+            "p = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'],\n"
+            "                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+            "print(f'GRANDCHILD_CLOSED_PID={p.pid}', flush=True)\n"
+            "sys.exit(0)\n"
+        )
+        adapter = IsolatedHostAdapter(
+            self.source_root, self.scratch_root,
+            target=self.target, revision=self.revision,
+            attestation_provider=self._make_attestation,
+            timeout=5
+        )
+        cmd = [sys.executable, str(script)]
+        req = {
+            "id": "r06-req-2", "target": self.target, "revision": self.revision,
+            "effect": "verify_local", "profile": "isolated-local",
+            "operation": "test_r06_pipe", "destination": "", "paths": ["src"],
+            "command": cmd,
+        }
+        res = adapter.dispatch(req, cmd)
+        self.assertTrue(res["occurred"])
+        m = re.search(r"GRANDCHILD_CLOSED_PID=(\d+)", res["stdout"])
+        self.assertIsNotNone(m, f"Could not find grandchild PID in stdout: {res['stdout']}")
+        gpid = int(m.group(1))
+        time.sleep(0.2)
+        try:
+            os.kill(gpid, 0)
+            alive = True
+        except OSError:
+            alive = False
+        self.assertFalse(alive, f"Grandchild process {gpid} with closed pipes survived!")
+
+    # -------------------------------------------------------------------------
+    # R-07: Strengthen authorization & telemetry integrity
+    # -------------------------------------------------------------------------
+
+    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    def test_r07_cross_instance_replay_rejected(self):
+        """R-07: Replaying an approval on a separate adapter instance is rejected."""
+        cmd = [sys.executable, "-c", "print('run_once')"]
+        req = {
+            "id": "r07-req-1", "target": self.target, "revision": self.revision,
+            "effect": "verify_local", "profile": "isolated-local",
+            "operation": "test_replay", "destination": "", "paths": ["src"],
+            "command": cmd,
+        }
+        adapter1 = IsolatedHostAdapter(
+            self.source_root, self.scratch_root,
+            target=self.target, revision=self.revision,
+            attestation_provider=self._make_attestation
+        )
+        res1 = adapter1.dispatch(req, cmd)
+        self.assertTrue(res1["occurred"])
+        self.assertFalse(res1["blocked"])
+
+        # Create separate adapter instance
+        adapter2 = IsolatedHostAdapter(
+            self.source_root, self.scratch_root,
+            target=self.target, revision=self.revision,
+            attestation_provider=self._make_attestation
+        )
+        res2 = adapter2.dispatch(req, cmd)
+        self.assertTrue(res2["blocked"])
+        self.assertFalse(res2["occurred"])
+        self.assertIn("authorization replay rejected", res2["reason"])
+
+    def test_r07_file_backed_approval_store_atomic_replay_prevention(self):
+        """R-07: ApprovalStore with file persistence enforces cross-process single-use consumption."""
+        store_path = self.scratch_root / "approvals.json"
+        store1 = ApprovalStore(store_path)
+        self.assertTrue(store1.consume("req-1", "auth-1", "spec-hash-1"))
+
+        # Second consumption in same store returns False
+        self.assertFalse(store1.consume("req-1", "auth-1", "spec-hash-1"))
+
+        # New store pointing to same file path also returns False (cross-process simulated)
+        store2 = ApprovalStore(store_path)
+        self.assertFalse(store2.consume("req-1", "auth-1", "spec-hash-1"))
+
+    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    def test_r07_telemetry_sanitizes_command_arguments(self):
+        """R-07: Telemetry retains hashes and lengths, never sensitive raw command arguments."""
+        secret_arg = "--api-secret-key=SUPER_SECRET_TOKEN_VALUE_XYZ"
+        cmd = [sys.executable, "-c", "print('sanitized')", secret_arg]
+        req = {
+            "id": "r07-req-3", "target": self.target, "revision": self.revision,
+            "effect": "verify_local", "profile": "isolated-local",
+            "operation": "test_telemetry_scrub", "destination": "", "paths": ["src"],
+            "command": cmd,
+        }
+        adapter = IsolatedHostAdapter(
+            self.source_root, self.scratch_root,
+            target=self.target, revision=self.revision,
+            attestation_provider=self._make_attestation
+        )
+        res = adapter.dispatch(req, cmd)
+        self.assertTrue(res["occurred"])
+        event = adapter.events[-1]
+        self.assertNotIn(secret_arg, json.dumps(event))
+        self.assertEqual(event["executable"], Path(sys.executable).name)
+        self.assertEqual(event["command_sha256"], digest(cmd))
+        self.assertEqual(event["command_arg_count"], 4)
+
+    def test_r07_spec_digest_mismatch_invalidates_authorization(self):
+        """R-07: Tampering with spec_sha256 in request blocks execution before process creation."""
+        cmd = [sys.executable, "-c", "print(1)"]
+        req = {
+            "id": "r07-req-4", "target": self.target, "revision": self.revision,
+            "effect": "verify_local", "profile": "isolated-local",
+            "operation": "test_spec_tamper", "destination": "", "paths": ["src"],
+            "command": cmd,
+            "spec_sha256": "tampered_spec_digest_12345",
+        }
+        adapter = IsolatedHostAdapter(
+            self.source_root, self.scratch_root,
+            target=self.target, revision=self.revision,
+            attestation_provider=self._make_attestation
+        )
+        res = adapter.dispatch(req, cmd)
+        self.assertTrue(res["blocked"])
+        self.assertFalse(res["occurred"])
+        self.assertIn("execution spec digest does not match", res["reason"])
 
 
 
