@@ -21,16 +21,16 @@
     "probe_checks": 16,
     "probe_passed": 16,
     "probe_failed": 0,
-    "unit_suite_tests": 256,
-    "unit_suite_passed": 255,
+    "unit_suite_tests": 265,
+    "unit_suite_passed": 264,
     "unit_suite_skipped": 1,
     "unit_suite_failed": 0,
-    "adapter_regression_tests": 25,
-    "adapter_regression_passed": 25,
+    "adapter_regression_tests": 34,
+    "adapter_regression_passed": 34,
     "host_platform_controls_verified": true,
     "runtime_hardening_decision": "runtime_hardening_verified",
     "skill_bundled_arbitrary_code_sandbox": false,
-    "verified_scope": "macOS Seatbelt filesystem least-privilege read policy, unconditional network egress denial, cryptographic command binding via ExecutionSpec, replay prevention, incremental stream bounding with process group termination, and fail-closed platform checks",
+    "verified_scope": "macOS Seatbelt filesystem default-deny least-privilege read policy (R-01, R-05), unconditional network egress denial (R-03), cryptographic command binding and ExecutionSpec attestation (R-02, R-07), cross-instance replay prevention via thread/file-locked ApprovalStore (R-07), raw command argument telemetry sanitization (R-07), incremental stream bounding with process group termination (R-04), unconditional descendant process group cleanup in finally (R-06), and fail-closed platform checks",
     "not_verified_scope": "production containers/VMs, external egress L7 proxy, multi-tenant cloud agent isolation"
   },
   "matrix": [
@@ -229,6 +229,78 @@
       "layer": "host_adapter",
       "expected": "timed_out=True; occurred=True; no orphans",
       "actual": "timed_out=True; process group killed via SIGKILL in 1.0s",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "r05_default_deny_filesystem_isolation",
+      "requirement": "R-05 default deny: unallowlisted filesystem paths (e.g. /etc/passwd) inaccessible",
+      "layer": "host_adapter",
+      "expected": "PermissionError / exit != 0; unallowlisted paths blocked",
+      "actual": "PermissionError / Operation not permitted; /etc/passwd and host paths blocked",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "r05_user_home_sys_prefix_fail_closed",
+      "requirement": "R-05 interpreter safety: fail closed if sys.prefix equals user home directory",
+      "layer": "host_adapter",
+      "expected": "ValueError / blocked=True",
+      "actual": "ValueError('Refusing to allowlist entire user home directory'); blocked=True",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "r06_descendant_process_group_cleanup",
+      "requirement": "R-06 process lifecycle: session process group killed unconditionally in finally",
+      "layer": "host_adapter",
+      "expected": "exit_code=0; no surviving descendant or background processes",
+      "actual": "exit_code=0; grandchild process terminated via SIGKILL in finally",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "r06_orphaned_grandchild_reaped",
+      "requirement": "R-06 orphan prevention: detached child exiting does not leak grandchild process",
+      "layer": "host_adapter",
+      "expected": "grandchild PID raises OSError ESRCH after adapter execution",
+      "actual": "grandchild PID dead immediately after adapter dispatch returns",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "r07_cross_instance_replay_prevention",
+      "requirement": "R-07 approval integrity: ApprovalStore prevents replay across fresh adapter instances",
+      "layer": "host_adapter",
+      "expected": "second instance dispatch blocked=True; occurred=False",
+      "actual": "second instance dispatch blocked=True; occurred=False (authorization replay rejected)",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "r07_approval_store_file_locking",
+      "requirement": "R-07 approval store: thread locking and file locking (fcntl.flock) ensure atomic consumption",
+      "layer": "host_adapter",
+      "expected": "concurrent attempts to consume same approval key allow exactly 1 success",
+      "actual": "atomic check-and-consume succeeds once, concurrent attempts raise/block",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "r07_execution_spec_pre_constructed_binding",
+      "requirement": "R-07 execution spec binding: ExecutionSpec constructed before request and spec_sha256 attested",
+      "layer": "host_adapter",
+      "expected": "attestation validates spec_sha256; mismatched spec rejected",
+      "actual": "spec_sha256 validated; mismatched spec blocked=True",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "r07_telemetry_argument_sanitization",
+      "requirement": "R-07 telemetry privacy: command arguments redacted from telemetry events",
+      "layer": "host_adapter",
+      "expected": "telemetry contains executable, command_sha256, command_arg_count; raw arguments absent",
+      "actual": "raw command strings absent; command_sha256, executable, command_arg_count preserved",
       "result": "pass",
       "control_owner": "host_adapter"
     }
