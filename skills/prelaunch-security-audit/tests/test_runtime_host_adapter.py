@@ -40,7 +40,13 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.scratch_root.mkdir(mode=0o700)
         self.target = "synthetic-repo"
         self.revision = "a" * 40
-        get_default_approval_store().clear()
+        # Isolate approval state per test; never clear durable production history.
+        self._approval_store_patch = patch(
+            "runtime_host_adapter._DEFAULT_APPROVAL_STORE",
+            ApprovalStore(self.base / "default-approvals" / "approvals.json"),
+        )
+        self._approval_store_patch.start()
+        self.addCleanup(self._approval_store_patch.stop)
 
     def tearDown(self):
         self.temp_dir.cleanup()
