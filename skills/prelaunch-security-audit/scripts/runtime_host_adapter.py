@@ -197,22 +197,11 @@ class ApprovalStore:
             return False
 
     def clear(self):
+        """Only ephemeral stores may reset; durable replay history is append-only."""
+        if self.storage_path is not None:
+            raise PermissionError("durable approval history cannot be cleared via runtime API")
         with self._lock:
             self._consumed.clear()
-            if self.storage_path and self.storage_path.exists():
-                try:
-                    lock_file = self.storage_path.with_name(f"{self.storage_path.name}.lock")
-                    lock_fd = os.open(lock_file, os.O_RDWR | os.O_CREAT, 0o600)
-                    try:
-                        fcntl.flock(lock_fd, fcntl.LOCK_EX)
-                        try:
-                            self.storage_path.unlink(missing_ok=True)
-                        finally:
-                            fcntl.flock(lock_fd, fcntl.LOCK_UN)
-                    finally:
-                        os.close(lock_fd)
-                except OSError:
-                    pass
 
 
 def get_default_approval_path() -> Path:
@@ -220,10 +209,7 @@ def get_default_approval_path() -> Path:
     if env_path:
         return Path(env_path).absolute()
     base_dir = Path.home() / ".vibe-security"
-    try:
-        base_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-    except OSError:
-        pass
+    base_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     return (base_dir / "approvals.json").absolute()
 
 
