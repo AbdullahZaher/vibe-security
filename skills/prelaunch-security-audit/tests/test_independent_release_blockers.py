@@ -101,6 +101,25 @@ class IndependentReleaseBlockerTests(unittest.TestCase):
         self.assertIn("external isolation supervisor", res["reason"])
         self.assertNotIn("spec_sha256", request)
 
+    def test_refused_runtime_does_not_consume_approval(self):
+        adapter = self._adapter()
+        command = [sys.executable, "-c", "print('MUST-NOT-RUN')"]
+        request = dict(id="not-consumed-1", target="synthetic", revision="a" * 40,
+                       effect="verify_local", profile="isolated-local",
+                       operation="run_test", destination="", paths=["source.py"],
+                       command=command)
+        result = adapter.dispatch(request, command)
+        self.assertTrue(result["blocked"])
+        self.assertFalse((self.private / "approvals.json").exists())
+
+    def test_durable_approval_history_cannot_be_reset(self):
+        store = ApprovalStore(self.private / "approvals.json")
+        self.assertTrue(store.consume("request-1", "authorization-1", "a" * 64))
+        with self.assertRaises(PermissionError):
+            store.clear()
+        self.assertFalse(ApprovalStore(self.private / "approvals.json").consume(
+            "request-1", "authorization-1", "a" * 64))
+
     def test_observe_cannot_become_subprocess(self):
         adapter = self._adapter()
         command = [sys.executable, "-c", "print('MUST-NOT-RUN')"]
