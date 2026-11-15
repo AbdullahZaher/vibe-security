@@ -48,9 +48,18 @@ class TestReport(unittest.TestCase):
             "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U",
             "sk_live_" + "d" * 24,
             "Bearer " + "e" * 32,
+            "aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+            "AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+            "github_pat_" + "A" * 40,
+            "npm_" + "A" * 40,
+            "rk_live_" + "A" * 24,
+            "SK00000000000000000000000000000000",
+            "SG." + "A" * 40 + "." + "B" * 44,
+            "Authorization: Basic dXNlcjpwYXNzd29yZA==",
+            "-----BEGIN PGP PRIVATE KEY BLOCK----- secret -----END PGP PRIVATE KEY BLOCK-----",
         ]
         for sample in samples:
-            with self.subTest(sample=sample):
+            with self.subTest(sample=sample[:30]):
                 redacted = sanitized(sample)
                 self.assertNotIn(sample, redacted)
                 self.assertIn("REDACTED", redacted)
@@ -195,22 +204,25 @@ class TestReport(unittest.TestCase):
         self.assertNotIn("**NO BLOCKERS FOUND IN TESTED SCOPE**", output)
 
     def test_scoped_all_clear_requires_per_control_matching_logs(self):
-        self.data["scope"]["revision"] = "abc123"
+        self.data["scope"]["revision"] = "a" * 40
         self.data["launch_recommendation"] = "no blockers found in tested scope"
         self.data["verification_log"] = []
         for row in self.data["controls"]:
             row.update({
                 "status": "pass", "test_result": "pass",
                 "evidence": "tests/fixture.py", "test_method": "pytest",
-                "evidence_revision": "abc123", "evidence_tier": "build",
+                "evidence_revision": "a" * 40, "evidence_tier": "build",
                 "verification_ref": f"V-{row['id']}",
             })
             self.data["verification_log"].append({
                 "id": row["verification_ref"], "control_id": row["id"],
-                "revision": "abc123", "method": "pytest",
+                "revision": "a" * 40, "method": "pytest",
                 "environment": "disposable", "observed": "pass", "result": "pass",
             })
         self.assertIn("**NO BLOCKERS FOUND IN TESTED SCOPE**", render(self.data))
+        self.data["scope"]["revision"] = "b" * 40
+        self.assertIn("**CONDITIONAL LAUNCH**", render(self.data))
+        self.data["scope"]["revision"] = "a" * 40
         last = self.data["verification_log"].pop()
         self.assertIn("**CONDITIONAL LAUNCH**", render(self.data))
         self.data["verification_log"].append(last)

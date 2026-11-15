@@ -286,6 +286,15 @@ def frozen_source(root, revision, path):
     """Read a bounded regular blob from an exact Git commit, never the worktree."""
     safe_relative_path(path)
     require(re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", revision) is not None, "full immutable Git revision required")
+    # Never read blobs borrowed through an alternate object store, and never
+    # honor GIT_ALTERNATE_OBJECT_DIRECTORIES: both let a target make the audit
+    # read source from another repository.
+    gitdir = Path(root).resolve() / ".git"
+    alternates = gitdir / "objects" / "info" / "alternates"
+    if alternates.exists():
+        raise ValueError("git alternate object stores are not allowed")
+    if "GIT_ALTERNATE_OBJECT_DIRECTORIES" in os.environ:
+        raise ValueError("GIT_ALTERNATE_OBJECT_DIRECTORIES is not allowed")
     # Do not inherit Git config/environment injection or invoke hooks, filters,
     # textconv, pagers, network transports or target-controlled executables.
     env = {"PATH": os.defpath, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,

@@ -79,7 +79,7 @@ def assess(request, *, attest=None):
     if (not isinstance(authority, HostAttestation) or authority.request_sha256 != digest(request)
             or not authority.authorization_ref):
         return result
-    if request['effect'] in {'verify_local', 'modify_local'}:
+    if request['effect'] in {'verify_local', 'modify_local', 'network_read', 'external_write'}:
         if (request['profile'] != 'isolated-local' or not authority.isolation_ref
                 or not CONTROLS <= authority.enforced_controls):
             return {**result, 'reason': 'required OS-enforced isolation controls not verified'}

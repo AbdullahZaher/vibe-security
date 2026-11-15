@@ -1,0 +1,181 @@
+{
+  "schema": "v0.5.0-runtime-test-matrix-v1",
+  "generated_at": "2026-11-15T00:00:00Z",
+  "reviewed_revision": "c557b76944a2295e5f8218fb5f99e511c4fe4073",
+  "probe_revision": "f491aa4",
+  "host": {
+    "os": "macOS 15.7.3",
+    "build": "24G419",
+    "kernel": "Darwin 24.6.0",
+    "arch": "arm64",
+    "python": "3.13.7",
+    "sandbox_mechanism": "Seatbelt via /usr/bin/sandbox-exec",
+    "container_or_vm": false
+  },
+  "probe": {
+    "script": "evals/runtime_boundary_probe.py",
+    "command": "python3 evals/runtime_boundary_probe.py --output <outside-repo>/v050-runtime-final.json",
+    "raw_report_sha256": "817d26e3851ee84edc5d9f71b26978a40884b387151abddd0b022beb6f3cf4b4",
+    "raw_report_sha_note": "run-specific; temp fixture paths are random so the SHA is not reproducible across runs",
+    "raw_report_mode": "0600",
+    "raw_report_location": "private temporary directory outside the Git checkout (not committed)",
+    "scope": "synthetic disposable fixtures; no target repository, real secret or external network"
+  },
+  "summary": {
+    "checks": 14,
+    "passed": 14,
+    "failed": 0,
+    "exit_code": 0,
+    "host_platform_controls_verified": true,
+    "skill_bundled_arbitrary_code_sandbox": false,
+    "verified_scope": "macOS Seatbelt filesystem, loopback-network and process-fork controls on synthetic fixtures, plus reviewed controller denials",
+    "not_verified_scope": "real target execution, host adapter integration, memory/disk quotas, external egress, containers/VMs, MCP hosts, model behavior"
+  },
+  "matrix": [
+    {
+      "id": "os_read_fixture_allowed",
+      "requirement": "read-only source inspection",
+      "layer": "os_sandbox",
+      "expected": "read succeeds",
+      "actual": "exit 0; 17 stdout bytes",
+      "result": "pass",
+      "control_owner": "host_platform"
+    },
+    {
+      "id": "os_write_scratch_allowed",
+      "requirement": "limited writable scratch space",
+      "layer": "os_sandbox",
+      "expected": "write succeeds",
+      "actual": "exit 0; scratch file created",
+      "result": "pass",
+      "control_owner": "host_platform"
+    },
+    {
+      "id": "os_write_fixture_denied",
+      "requirement": "read-only target source",
+      "layer": "os_sandbox",
+      "expected": "write denied",
+      "actual": "exit 1; Operation not permitted marker true; no file created",
+      "result": "pass",
+      "control_owner": "host_platform"
+    },
+    {
+      "id": "os_write_other_workspace_denied",
+      "requirement": "no access to other Agent workspaces",
+      "layer": "os_sandbox",
+      "expected": "write denied",
+      "actual": "exit 1; Operation not permitted marker true; no file created",
+      "result": "pass",
+      "control_owner": "host_platform"
+    },
+    {
+      "id": "os_read_host_secret_denied",
+      "requirement": "no access to host secrets",
+      "layer": "os_sandbox",
+      "expected": "read denied",
+      "actual": "exit 1; Operation not permitted marker true; secret not returned",
+      "result": "pass",
+      "control_owner": "host_platform"
+    },
+    {
+      "id": "os_symlink_escape_denied",
+      "requirement": "no symlink traversal escape",
+      "layer": "os_sandbox",
+      "expected": "read through link denied",
+      "actual": "exit 1; Operation not permitted marker true; secret not returned",
+      "result": "pass",
+      "control_owner": "host_platform"
+    },
+    {
+      "id": "network_listener_reachable_baseline",
+      "requirement": "controlled loopback fixture",
+      "layer": "network_fixture",
+      "expected": "reachable without sandbox",
+      "actual": "exit 0",
+      "result": "pass",
+      "control_owner": "test_harness"
+    },
+    {
+      "id": "os_network_loopback_denied",
+      "requirement": "network isolation",
+      "layer": "os_sandbox",
+      "expected": "connect denied",
+      "actual": "exit 1; Operation not permitted marker true",
+      "result": "pass",
+      "control_owner": "host_platform"
+    },
+    {
+      "id": "os_subprocess_fork_denied",
+      "requirement": "subprocess creation control",
+      "layer": "os_sandbox",
+      "expected": "fork denied",
+      "actual": "exit 1; Operation not permitted marker true; child output absent",
+      "result": "pass",
+      "control_owner": "host_platform"
+    },
+    {
+      "id": "rlimit_cpu_time_kills_child",
+      "requirement": "CPU/time limit",
+      "layer": "rlimit",
+      "expected": "child terminated within 15 s",
+      "actual": "exit -24 (SIGXCPU) after about 1.0 s",
+      "result": "pass",
+      "control_owner": "host_platform"
+    },
+    {
+      "id": "controller_child_output_bounded",
+      "requirement": "output limit",
+      "layer": "controller",
+      "expected": "bounded rejection",
+      "actual": "ValueError at the configured 100-byte cap for a 5000-byte child",
+      "result": "pass",
+      "control_owner": "skill_controller"
+    },
+    {
+      "id": "controller_static_host_read_allowed",
+      "requirement": "allowlisted read-only source inspection",
+      "layer": "controller",
+      "expected": "content returned",
+      "actual": "content returned; event occurred=true, blocked=false",
+      "result": "pass",
+      "control_owner": "skill_controller"
+    },
+    {
+      "id": "controller_static_host_network_denied",
+      "requirement": "unauthorized network request denied by host code",
+      "layer": "controller",
+      "expected": "DENIED",
+      "actual": "DENIED; event occurred=false, blocked=true",
+      "result": "pass",
+      "control_owner": "skill_controller"
+    },
+    {
+      "id": "controller_staging_local_write_blocked",
+      "requirement": "staging permission cannot authorize local writes",
+      "layer": "controller",
+      "expected": "blocked",
+      "actual": "blocked",
+      "result": "pass",
+      "control_owner": "skill_controller"
+    }
+  ],
+  "not_tested": [
+    "real target repository execution",
+    "independently reviewed host adapter consuming HostAttestation",
+    "Docker, container, VM or microVM isolation",
+    "memory and disk quotas",
+    "process-count and wall-clock kill after host failure",
+    "external network egress, DNS and proxy bypass",
+    "MCP host and tool-schema poisoning",
+    "cleanup after SIGKILL, host crash or power loss",
+    "real credentials, production sockets or Docker daemon exposure",
+    "model behavior, tool-call authenticity or independent review"
+  ],
+  "limitations": [
+    "sandbox-exec is host-platform enforcement, not a Skill runtime adapter.",
+    "The probe is a manual macOS-only evidence script; GitHub Actions does not run it because Linux lacks sandbox-exec.",
+    "The profile is a simple reference configuration, not a production review.",
+    "The probe exercises fixed synthetic commands on one macOS host.",
+    "Passing these checks does not establish arbitrary-code safety."
+  ]
+}

@@ -34,14 +34,24 @@ EVIDENCE_TIER = {"source", "build", "runtime", "deployment", "unspecified"}
 RESOLUTION_STATUS = {"open", "in_progress", "needs_approval", "fixed_verified", "false_positive_verified", "accepted_risk"}
 SECRET_PATTERNS = [
     re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----.*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", re.S),
+    re.compile(r"-----BEGIN PGP PRIVATE KEY BLOCK-----.*?-----END PGP PRIVATE KEY BLOCK-----", re.S),
     re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b"),
+    re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"),
+    re.compile(r"\bnpm_[A-Za-z0-9]{20,}\b"),
     re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+    re.compile(r"\baws_secret_access_key\s*[:=]\s*[^\s,;]+", re.I),
+    re.compile(r"\bAWS_SECRET_ACCESS_KEY\s*[:=]\s*[^\s,;]+"),
     re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b"),
     re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}\b"),
     re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"),
     re.compile(r"\bsk_(?:live|test)_[A-Za-z0-9]{10,}\b"),
+    re.compile(r"\brk_live_[A-Za-z0-9]{10,}\b"),
     re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
     re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{20,}", re.I),
+    re.compile(r"\bhooks\.slack\.com/services/[A-Za-z0-9_/]{20,}\b"),
+    re.compile(r"\bSK[A-Za-z0-9]{20,}\b"),
+    re.compile(r"\bSG\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\b"),
+    re.compile(r"Authorization:\s*Basic\s+[A-Za-z0-9+/=]{8,}", re.I),
     re.compile(r"\b(?:password|api[_-]?key|secret|access[_-]?token)\s*[:=]\s*[^\s,;]+", re.I),
 ]
 
@@ -97,8 +107,9 @@ def _validate_control(row: Any, index: int, revision: str = "not provided") -> d
     if result["status"] in {"pass", "fixed_verified"}:
         current_revision = revision not in {"", "not provided", "unspecified", None}
         wrong_revision = not current_revision or result.get("evidence_revision") != revision
+        fix_required = bool(result.get("fix", "").strip()) if result["status"] == "fixed_verified" else True
         if (result["test_result"] != "pass" or not result.get("test_method")
-                or not result.get("evidence") or wrong_revision):
+                or not result.get("evidence") or wrong_revision or not fix_required):
             result["status"] = "not_verified"
             result["test_result"] = "not_run"
             result["owner_action"] = (
@@ -204,7 +215,7 @@ def render(data: dict[str, Any], *, source_root=None, artifact_root=None,
             log.get("id") == row["verification_ref"]
             and log.get("control_id") == row["id"]
             and log.get("revision") == revision
-            and revision not in {"", "not provided", "unspecified", None}
+            and bool(revision) and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", revision)
             and log.get("result") == "pass"
             and all(isinstance(log.get(field), str) and log[field].strip()
                     for field in ("method", "environment", "observed"))

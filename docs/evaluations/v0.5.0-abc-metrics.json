@@ -1,0 +1,109 @@
+{
+  "schema": "v0.5.0-abc-metrics-v1",
+  "generated_at": "2026-11-15T00:00:00Z",
+  "status": "blocked_no_real_trials",
+  "performance_claim": "none",
+  "reason": "No approved inference budget, privacy authorization, frozen authorized targets, independent ground truth or independent adjudicators were available. No real A/B/C trial was executed.",
+  "evaluated_skill_version": "0.5.0-rc1",
+  "candidate_source_revision": "c557b76944a2295e5f8218fb5f99e511c4fe4073",
+  "candidate_skill_tree": "190f605f02981b20b587b67870996af30756f08b",
+  "baseline_source_revision": "60d985a81af7c1a4a1ed95c7b376b1b3c4a7ccac",
+  "baseline_skill_tree": "3c12715c4e01da4bce1b7648b884e219dee2e39a",
+  "trial_freeze": {
+    "candidate_revision": null,
+    "note": "The final candidate SHA must be frozen per trial; the protocol revision above is not automatically the trial revision."
+  },
+  "conditions": {
+    "A": {
+      "treatment": "no_skill",
+      "real_trials_completed": 0,
+      "real_trials_attempted": 0,
+      "authenticated_host_logs": 0
+    },
+    "B": {
+      "treatment": "prelaunch-security-audit 0.4.0-rc2",
+      "source_revision": "60d985a81af7c1a4a1ed95c7b376b1b3c4a7ccac",
+      "skill_tree": "3c12715c4e01da4bce1b7648b884e219dee2e39a",
+      "real_trials_completed": 0,
+      "real_trials_attempted": 0,
+      "authenticated_host_logs": 0
+    },
+    "C": {
+      "treatment": "prelaunch-security-audit 0.5.0-rc1",
+      "source_revision": "c557b76944a2295e5f8218fb5f99e511c4fe4073",
+      "skill_tree": "190f605f02981b20b587b67870996af30756f08b",
+      "real_trials_completed": 0,
+      "real_trials_attempted": 0,
+      "authenticated_host_logs": 0
+    }
+  },
+  "targets": {
+    "required_minimum": 5,
+    "frozen_targets": 0,
+    "architectures_represented": [],
+    "authorization_records": 0,
+    "ground_truth_bundles": 0
+  },
+  "metrics": {
+    "true_positives": {"value": null, "status": "N/A", "reason": "no real trials"},
+    "false_positives": {"value": null, "status": "N/A", "reason": "no real trials"},
+    "false_negatives": {"value": null, "status": "N/A", "reason": "no independent ground-truth denominator"},
+    "precision": {"value": null, "status": "N/A", "reason": "no real trials"},
+    "recall": {"value": null, "status": "N/A", "reason": "no independent ground-truth denominator"},
+    "severity_accuracy": {"value": null, "status": "N/A", "reason": "no adjudicated findings"},
+    "confidence_calibration": {"value": null, "status": "N/A", "reason": "no adjudicated findings"},
+    "evidence_reproducibility": {"value": null, "status": "N/A", "reason": "no real findings replayed"},
+    "attack_surface_discovery_coverage": {"value": null, "status": "N/A", "reason": "no frozen target inventory"},
+    "verified_vs_deferred_coverage": {"value": null, "status": "N/A", "reason": "no real coverage ledger"},
+    "authorization_test_correctness": {"value": null, "status": "N/A", "reason": "no real authorization trials"},
+    "remediation_verification": {"value": null, "status": "N/A", "reason": "no real remediation trials"},
+    "unsafe_executed_operations": {"value": 0, "status": "N/A", "reason": "no trial executed; zero is not evidence of safety"},
+    "blocked_unsafe_attempts": {"value": 0, "status": "N/A", "reason": "no model attempted an action"},
+    "tool_calls": {"value": 0, "status": "N/A", "reason": "no model tool loop ran"},
+    "tokens": {"value": null, "status": "N/A", "reason": "no inference"},
+    "wall_time_seconds": {"value": null, "status": "N/A", "reason": "no trials"},
+    "cost_usd": {"value": 0, "status": "N/A", "reason": "no paid inference"}
+  },
+  "non_trial_verification": {
+    "purpose": "harness plumbing only; these results are not A/B/C performance evidence",
+    "unit_and_contract_tests": {
+      "command": "python3 -m unittest discover -s skills/prelaunch-security-audit/tests -v",
+      "revision": "c557b76944a2295e5f8218fb5f99e511c4fe4073",
+      "environment": "macOS 15.7.3, arm64, Python 3.13.7",
+      "total": 227,
+      "passed": 226,
+      "failed": 0,
+      "skipped": 1,
+      "skip_reason": "optional MCP SDK absent",
+      "exit_code": 0
+    },
+    "live_runner_preflight": {
+      "command": "python3 evals/live_agent_runner.py --corpus evals/cases.json --fixtures evals/fixtures.json --skill skills/prelaunch-security-audit/SKILL.md --case supabase-tenant-rls --model preflight-no-inference --revision c557b76944a2295e5f8218fb5f99e511c4fe4073 --host-id local-macos-preflight --output <outside-repo>/v050-preflight.json",
+      "observed": {
+        "mode": "preflight_only",
+        "case": "supabase-tenant-rls",
+        "repeat": 1,
+        "max_model_calls": 3,
+        "no_inference_performed": true,
+        "output_file_created": false
+      },
+      "exit_code": 0,
+      "classification": "plumbing check, not a trial"
+    },
+    "local_model_availability": {
+      "checked": true,
+      "result": "only cloud-tagged Ollama manifests were present; no local model weights",
+      "inference_performed": false,
+      "reason": "using a cloud-tagged manifest would require provider egress and budget authorization"
+    }
+  },
+  "blockers": [
+    "no approved model/inference budget",
+    "no privacy approval to transmit target source",
+    "no owner-authorized frozen target set (minimum five architectures)",
+    "no independent ground truth or adjudicators",
+    "no verified arbitrary-code isolation adapter for real-target runtime testing",
+    "no local model weights available for a no-cost pilot"
+  ],
+  "release_effect": "v0.5.0-rc1 retains release-candidate status; no accuracy, false-positive or effectiveness claim is supported."
+}

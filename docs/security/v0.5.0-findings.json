@@ -1,0 +1,274 @@
+{
+  "schema": "v0.5.0-security-review-findings-v1",
+  "generated_at": "2026-11-15T00:00:00Z",
+  "skill_version": "0.5.0-rc1",
+  "reviewed_code_revision": "c557b76944a2295e5f8218fb5f99e511c4fe4073",
+  "reviewed_skill_tree": "190f605f02981b20b587b67870996af30756f08b",
+  "baseline_code_revision": "949ee4b264d251debbddc634aabf987002fb56f8",
+  "independence": {
+    "independent_human_review": false,
+    "independent_organization_review": false,
+    "separate_context_ai_review": true,
+    "reviewer_session": "ses_e21ea6e06ffe2Gves78dlJqm7Y",
+    "note": "A fresh-context AI reviewer examined a read-only worktree. This is adversarial second-pass review, not independent human accountability or a controller-attested independent verification."
+  },
+  "scope": {
+    "included": [
+      "prelaunch-security-audit controllers and validators",
+      "report rendering and redaction",
+      "artifact IO and execution-profile authorization",
+      "evidence sealing",
+      "A/B/C trial-matrix gate and live-runner harness",
+      "runtime boundary probe",
+      "synthetic fixtures only"
+    ],
+    "excluded": [
+      "real target repositories",
+      "model provider calls and paid inference",
+      "production systems and credentials",
+      "containers, VMs and external egress",
+      "independent human review"
+    ]
+  },
+  "findings": [
+    {
+      "id": "V050-R01",
+      "title": "authorized-staging could authorize a local filesystem write",
+      "severity": "medium",
+      "confidence": "high",
+      "status": "remediated_verified",
+      "category": "authorization",
+      "affected_file": "skills/prelaunch-security-audit/scripts/execution_profiles.py",
+      "affected_function": "assess",
+      "root_cause": "Only verify_local was blocked for authorized-staging; modify_local could reach eligible_for_host_dispatch with a valid authorization reference, and modify_local did not require isolation controls.",
+      "attacker_prerequisites": "Caller can submit an execution request and obtain a trusted-looking HostAttestation for the exact request digest.",
+      "trust_boundary": "Controller authorization versus host dispatch.",
+      "reproduction": "Assess authorized-staging + modify_local with a matching HostAttestation; pre-fix status was eligible_for_host_dispatch.",
+      "fix": "Block both verify_local and modify_local for authorized-staging; require isolated-local, a non-empty isolation_ref and all seven enforced controls for modify_local.",
+      "regression_tests": [
+        "test_static_and_staging_cannot_execute_local_code",
+        "test_local_write_needs_full_isolation_controls"
+      ],
+      "verification": "After fix: staging+write is blocked; isolated-local+write with a missing control is not_verified; with all controls it is eligible_for_host_dispatch.",
+      "residual_risk": "A host that ignores assess() can still perform the write."
+    },
+    {
+      "id": "V050-R02",
+      "title": "failed executed coverage check did not downgrade an all-clear",
+      "severity": "high",
+      "confidence": "high",
+      "status": "remediated_verified",
+      "category": "reporting_integrity",
+      "affected_file": "skills/prelaunch-security-audit/scripts/render_report.py",
+      "affected_function": "render / coverage gate",
+      "root_cause": "The all-clear gate considered partial, blocked, deferred and unassessed coverage but not evidence rows whose executed result was fail.",
+      "attacker_prerequisites": "Untrusted audit JSON supplies a no-blockers recommendation and a failed executed coverage row.",
+      "trust_boundary": "Structured evidence versus rendered launch recommendation.",
+      "reproduction": "Render the example report with one coverage evidence row set to result=fail; pre-fix output retained NO BLOCKERS FOUND IN TESTED SCOPE.",
+      "fix": "Treat any failed executed coverage evidence as incomplete and print the failed-check count.",
+      "regression_tests": [
+        "test_failed_executed_coverage_check_prevents_all_clear"
+      ],
+      "verification": "After fix: output is CONDITIONAL LAUNCH and reports 'Executed checks recorded as failed: 1'.",
+      "residual_risk": "The renderer still trusts evidence shape and provenance labels; host attestation is a separate gate."
+    },
+    {
+      "id": "V050-R03",
+      "title": "private evidence source could be swapped between check and read",
+      "severity": "medium",
+      "confidence": "high",
+      "status": "remediated_verified",
+      "category": "local_file_race",
+      "affected_file": "evals/seal_evidence.py",
+      "affected_function": "_validate_private_source",
+      "root_cause": "The reader checked is_symlink()/is_file() and then called read_bytes(), leaving a link-replacement race and no explicit FIFO rejection.",
+      "attacker_prerequisites": "Local write access to the directory containing the evidence source during sealing.",
+      "trust_boundary": "Evidence collector versus local filesystem.",
+      "reproduction": "Point the reader at a symlink or FIFO; pre-fix symlink check existed but the read was not descriptor-bound.",
+      "fix": "Open with O_NOFOLLOW and O_NONBLOCK, fstat the descriptor, require a regular file, enforce size caps before and during a bounded read.",
+      "regression_tests": [
+        "test_private_source_reader_never_follows_links_or_fifos",
+        "test_refuses_symlink_review_record"
+      ],
+      "verification": "After fix: symlink and FIFO raise ValueError; allowed regular files return bytes; over-limit input raises ValueError.",
+      "residual_risk": "Directory-level swaps and compromised local accounts remain outside this control."
+    },
+    {
+      "id": "V050-R04",
+      "title": "report redaction missed common credential formats",
+      "severity": "low",
+      "confidence": "high",
+      "status": "remediated_verified",
+      "category": "secret_exposure",
+      "affected_file": "skills/prelaunch-security-audit/scripts/render_report.py",
+      "affected_function": "sanitized",
+      "root_cause": "Patterns covered GitHub, generic sk-, private keys and key/value text but not AWS, Google, Slack, JWT, Stripe or Bearer tokens.",
+      "attacker_prerequisites": "A credential of an uncovered format appears in report input.",
+      "trust_boundary": "Untrusted report text versus generated markdown.",
+      "reproduction": "Sanitize each synthetic sample; pre-fix output retained the sample.",
+      "fix": "Add bounded patterns for AWS access keys, Google API keys, Slack tokens, JWTs, Stripe keys and Bearer credentials.",
+      "regression_tests": [
+        "test_secret_redacted_and_pipes_escaped"
+      ],
+      "verification": "All seven synthetic samples are replaced and markup escaping still works.",
+      "residual_risk": "Best-effort redaction cannot guarantee removal of every secret or novel encoding."
+    },
+    {
+      "id": "V050-R05",
+      "title": "portability fix required a control against user-writable symlink roots",
+      "severity": "medium",
+      "confidence": "high",
+      "status": "control_added_verified",
+      "finding_origin": "design_review_during_repair",
+      "baseline_exploitable": false,
+      "category": "path_traversal_prevention",
+      "affected_file": "skills/prelaunch-security-audit/scripts/audit_artifacts.py",
+      "affected_function": "trusted_root / read_artifact / write_new_artifact",
+      "root_cause": "The baseline correctly failed closed on macOS /var but broke valid artifact IO. Supporting system links requires canonicalization; an unconditional realpath would have followed user-controlled links and redirected the artifact boundary. The control must distinguish immutable system links from user-writable ones.",
+      "attacker_prerequisites": "Only relevant to the repair design; the baseline did not follow the link. A naive realpath repair would be redirectable by anyone able to create a symlink component of the operator-supplied root.",
+      "trust_boundary": "Artifact root versus repository/task-controlled paths.",
+      "reproduction": "Create a user-owned directory symlink and pass it as root to a naive realpath implementation; it would be followed. The committed trusted_root rejects it.",
+      "fix": "Permit only root-owned links whose parent is not writable by the current user; reject all other symlink components; continue O_NOFOLLOW traversal below the root.",
+      "regression_tests": [
+        "test_immutable_system_root_symlink_is_canonicalized",
+        "test_user_writable_symlink_root_rejected",
+        "test_output_symlink_parent_and_leaf_never_modify_target",
+        "test_artifact_root_parent_link_rejected"
+      ],
+      "verification": "macOS temporary roots work; a user-created root symlink is rejected; output parent/leaf symlinks cannot modify their target.",
+      "residual_risk": "The operator-supplied root is trusted; it is not bound to a Git revision by this function."
+    },
+    {
+      "id": "V050-B1",
+      "title": "coverage evidence containment bypassed by symlinked path aliases",
+      "severity": "medium",
+      "confidence": "high",
+      "status": "remediated_verified",
+      "category": "path_traversal",
+      "affected_file": "skills/prelaunch-security-audit/scripts/validate_coverage.py",
+      "affected_function": "validate evidence containment check",
+      "root_cause": "The containment check compared unresolved `.absolute()` paths, so the same repository reached through a symlink alias (for example macOS `/var` vs `/private/var`) was not recognized as the target, and in-repo retained evidence was accepted.",
+      "attacker_prerequisites": "Ability to supply coverage evidence whose artifact path is inside the target repository, with the source root supplied through a symlink alias of that repository.",
+      "trust_boundary": "Retained evidence must live outside the target repository.",
+      "reproduction": "Pass source_root as a symlink alias of the repo and artifact_root as the real path; pre-fix validation accepted the in-repo artifact.",
+      "fix": "Resolve both roots with `Path.resolve()` before the `is_relative_to` containment test, and require both roots to be existing directories.",
+      "regression_tests": [
+        "test_coverage_artifact_containment_rejects_symlink_alias"
+      ],
+      "verification": "After fix: symlink-alias containment is rejected with 'retained evidence must be outside the target repository'.",
+      "residual_risk": "The hash is still checked, but both hash and artifact can be target-controlled when containment passes; evidence_authenticity remains not_verified."
+    },
+    {
+      "id": "V050-B2",
+      "title": "frozen source accepts blobs borrowed through Git object alternates",
+      "severity": "medium",
+      "confidence": "high",
+      "status": "remediated_verified",
+      "category": "provenance",
+      "affected_file": "skills/prelaunch-security-audit/scripts/audit_artifacts.py",
+      "affected_function": "frozen_source",
+      "root_cause": "Git was invoked without disabling `.git/objects/info/alternates` or `GIT_ALTERNATE_OBJECT_DIRECTORIES`, so `cat-file` could return blobs from another local repository as if they belonged to the target.",
+      "attacker_prerequisites": "A target repository whose `.git/objects/info/alternates` references another repository's object store, or a caller who sets `GIT_ALTERNATE_OBJECT_DIRECTORIES`.",
+      "trust_boundary": "Frozen source must be read from the exact target revision, not borrowed objects.",
+      "reproduction": "Add an alternates file pointing at a victim repo's objects; `validate_source` accepted a foreign blob as the target source.",
+      "fix": "Reject repositories with a non-empty `alternates` file and refuse `GIT_ALTERNATE_OBJECT_DIRECTORIES` before any Git read.",
+      "regression_tests": [
+        "test_frozen_source_rejects_git_alternates"
+      ],
+      "verification": "After fix: `validate_source` raises 'git alternate object stores are not allowed' when alternates exist.",
+      "residual_risk": "Reachability verification without alternates is a deeper defense not yet added."
+    },
+    {
+      "id": "V050-B3",
+      "title": "report redaction misses common credential formats",
+      "severity": "low",
+      "confidence": "high",
+      "status": "remediated_verified",
+      "category": "secret_exposure",
+      "affected_file": "skills/prelaunch-security-audit/scripts/render_report.py",
+      "affected_function": "sanitized / SECRET_PATTERNS",
+      "root_cause": "The pattern list omitted AWS secret access keys, fine-grained GitHub PATs, npm tokens, Stripe restricted keys, Slack webhooks, Twilio SIDs, SendGrid keys, Basic auth headers and PGP private-key blocks.",
+      "attacker_prerequisites": "A credential of an uncovered format appears in report input text.",
+      "trust_boundary": "Untrusted report text versus generated markdown.",
+      "reproduction": "Sanitize each uncovered sample; pre-fix output retained the raw secret.",
+      "fix": "Add bounded patterns for those credential families and keep table-driven tests.",
+      "regression_tests": [
+        "test_secret_redacted_and_pipes_escaped"
+      ],
+      "verification": "After fix: all synthetic samples (including AWS secret keys, fine-grained PATs, npm tokens, Stripe restricted keys, Slack webhooks, Twilio SIDs, SendGrid keys, Basic auth and PGP blocks) are replaced.",
+      "residual_risk": "Best-effort redaction cannot guarantee removal of every secret or novel encoding."
+    },
+    {
+      "id": "V050-B4",
+      "title": "isolated-local eligibility without OS controls for network and external-write effects",
+      "severity": "low",
+      "confidence": "high",
+      "status": "remediated_verified",
+      "category": "authorization",
+      "affected_file": "skills/prelaunch-security-audit/scripts/execution_profiles.py",
+      "affected_function": "assess",
+      "root_cause": "The all-seven-controls requirement applied only to `verify_local`/`modify_local`; `network_read` and `external_write` under `isolated-local` returned `eligible_for_host_dispatch` with zero attested controls, contradicting the reference table.",
+      "attacker_prerequisites": "An embedder that treats `eligible_for_host_dispatch` as a dispatch gate without independently checking controls.",
+      "trust_boundary": "Controller eligibility signal versus host-enforced isolation.",
+      "reproduction": "Assess isolated-local + network_read with a valid attestation and zero controls; pre-fix returned eligible_for_host_dispatch.",
+      "fix": "Extend the control requirement to `network_read` and `external_write` under isolated-local.",
+      "regression_tests": [
+        "test_isolated_local_needs_controls_for_network_and_external_write"
+      ],
+      "verification": "After fix: isolated-local network_read/external_write with zero controls returns not_verified; with all seven controls returns eligible_for_host_dispatch.",
+      "residual_risk": "The host must still enforce controls at dispatch; assess() never executes."
+    },
+    {
+      "id": "V050-B5",
+      "title": "legacy all-clear accepts arbitrary non-SHA revision labels",
+      "severity": "low",
+      "confidence": "high",
+      "status": "remediated_verified",
+      "category": "reporting_integrity",
+      "affected_file": "skills/prelaunch-security-audit/scripts/render_report.py",
+      "affected_function": "render verified_control_coverage gate",
+      "root_cause": "The all-clear gate accepted any non-empty revision string, so 27 passing controls with matching self-claimed logs bound to a label such as `deadbeef` produced `NO BLOCKERS FOUND IN TESTED SCOPE`.",
+      "attacker_prerequisites": "Untrusted audit JSON supplies a no-blockers recommendation with a fabricated revision and matching verification logs.",
+      "trust_boundary": "Report scope revision versus an immutable Git SHA.",
+      "reproduction": "Set scope.revision to `deadbeef`, all 27 controls to pass with matching logs; pre-fix rendered an all-clear bound to `deadbeef`.",
+      "fix": "Require the all-clear coverage gate's revision to match `[0-9a-f]{40}|[0-9a-f]{64}`; non-SHA revisions downgrade to conditional launch.",
+      "regression_tests": [
+        "test_scoped_all_clear_requires_per_control_matching_logs"
+      ],
+      "verification": "After fix: all-clear with a non-SHA revision renders CONDITIONAL LAUNCH; a full SHA with matching logs still renders NO BLOCKERS FOUND IN TESTED SCOPE.",
+      "residual_risk": "Individual pass claims can still use non-SHA revisions; only the all-clear is SHA-bound."
+    }
+  ],
+  "engineering_defects": [
+    {
+      "id": "V050-E01",
+      "title": "artifact IO rejected macOS /var and failed eight tests",
+      "severity": "not_a_security_finding",
+      "status": "remediated_verified",
+      "detail": "The no-follow walk treated the root-owned /var -> /private/var system link as an unsafe component. Baseline on macOS 15.7.3: 219 tests, 2 failures, 6 errors, exit 1. Fixed by trusted_root; post-fix 224 tests, 223 passed, 1 skipped, exit 0.",
+      "raw_baseline_log_sha256": "5b30ed1d1c569bb2569293af80a2f915d3e39674e86dbdab494bf0d3888336ef",
+      "raw_postfix_log_sha256": "e1fd374f5556a1b9a5c09bf55570aee4c12b3d691e0ae44b9760ab59b04b1f30"
+    }
+  ],
+  "external_review": {
+    "status": "completed",
+    "reviewer": "separate-context AI self-review (session ses_e21ea6e06ffe2Gves78dlJqm7Y), read-only worktree at c557b76",
+    "note": "Not independent human review. The reviewer confirmed five weaknesses (B1-B5); all were reproduced on synthetic fixtures and remediated with regression tests. C1-C4 needs-validation items remain documented limitations.",
+    "confirmed_new_findings": ["V050-B1", "V050-B2", "V050-B3", "V050-B4", "V050-B5"],
+    "validated_findings": ["V050-B1", "V050-B2", "V050-B3", "V050-B4", "V050-B5"],
+    "rejected_candidates": [],
+    "needs_validation_limitations": [
+      "seal_evidence review-directory check/use race (C1)",
+      "trusted_root immutable-parent owner-0555 edge (C2)",
+      "plan_guard allowlisted Git helpers can invoke repository-configured helpers (C3)",
+      "coverage artifact containment skipped when source-root omitted (C4)"
+    ]
+  },
+  "release_blockers": [
+    "no genuine A/B/C trials",
+    "no independent human or controller-attested security review",
+    "no verified arbitrary-code isolation adapter or host-attestation channel",
+    "no real-target runtime evidence"
+  ],
+  "release_decision": "release candidate retained"
+}

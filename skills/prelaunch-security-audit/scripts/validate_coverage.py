@@ -63,8 +63,12 @@ def validate(data, inventory, source_root=None, artifact_root=None):
         if proof["artifact"] is not None:
             require(artifact_root is not None, "artifact root required to verify evidence hash")
             if source_root is not None:
-                retained = Path(artifact_root).absolute() / proof["artifact"]["path"]
-                require(not retained.is_relative_to(Path(source_root).absolute()),
+                source_root_resolved = Path(source_root).resolve()
+                artifact_root_resolved = Path(artifact_root).resolve()
+                require(source_root_resolved.is_dir() and artifact_root_resolved.is_dir(),
+                        "source and artifact roots must be existing directories")
+                retained = artifact_root_resolved / proof["artifact"]["path"]
+                require(not retained.is_relative_to(source_root_resolved),
                         "retained evidence must be outside the target repository")
             raw = read_artifact(artifact_root, proof["artifact"]["path"])
             require(hashlib.sha256(raw).hexdigest() == proof["artifact"]["sha256"], "evidence artifact hash mismatch")

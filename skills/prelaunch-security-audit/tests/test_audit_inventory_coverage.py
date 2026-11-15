@@ -211,6 +211,27 @@ class ArtifactTests(unittest.TestCase):
         self.assertTrue(validate_source(self.source,self.rev,self.repo))
         self.assertFalse(sentinel.exists())
 
+    def test_coverage_artifact_containment_rejects_symlink_alias(self):
+        # Same repository reached through two lexical spellings; the old
+        # unresolved-path check accepted in-repo retained evidence.
+        alias = self.root / 'alias'
+        alias.symlink_to(self.repo, target_is_directory=True)
+        evidence = self.repo / 'retained-evidence.json'
+        evidence.write_bytes(b'{}')
+        data = deepcopy(self.ledger)
+        data['evidence'][0]['artifact'] = {'path': 'retained-evidence.json',
+                                           'sha256': hashlib.sha256(b'{}').hexdigest()}
+        with self.assertRaisesRegex(ValueError, 'retained evidence must be outside'):
+            validate_coverage(data, self.inventory, alias, self.repo)
+
+    def test_frozen_source_rejects_git_alternates(self):
+        # An alternate object store lets the audit read blobs from another repo.
+        alt = self.repo / '.git' / 'objects' / 'info'
+        alt.mkdir(parents=True, exist_ok=True)
+        (alt / 'alternates').write_text(str(self.repo / '.git' / 'objects') + '\n')
+        with self.assertRaisesRegex(ValueError, 'alternate'):
+            validate_source(self.source, self.rev, self.repo)
+
     def test_artifacts_reject_traversal_symlinks_and_large_files(self):
         (self.root/'log').write_text('content')
         (self.root/'link').symlink_to(self.root/'log')

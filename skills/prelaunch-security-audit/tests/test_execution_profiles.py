@@ -47,6 +47,15 @@ class TestExecutionProfiles(unittest.TestCase):
         authority = HostAttestation(digest(r), 'owner', 'reviewed-os-log', CONTROLS)
         self.assertEqual(assess(r, attest=lambda r: authority)['status'], 'eligible_for_host_dispatch')
 
+    def test_isolated_local_needs_controls_for_network_and_external_write(self):
+        for effect in ('network_read', 'external_write'):
+            r = request(profile='isolated-local', effect=effect,
+                        destination='http://127.0.0.1:9', operation='read remote')
+            authority = HostAttestation(digest(r), 'owner', 'reviewed-os-log', set())
+            self.assertEqual(assess(r, attest=lambda r: authority)['status'], 'not_verified')
+            authority = HostAttestation(digest(r), 'owner', 'reviewed-os-log', CONTROLS)
+            self.assertEqual(assess(r, attest=lambda r: authority)['status'], 'eligible_for_host_dispatch')
+
     def test_docker_name_or_missing_isolation_controls_never_suffice(self):
         r = request(profile='isolated-local', effect='verify_local')
         for missing in CONTROLS:
