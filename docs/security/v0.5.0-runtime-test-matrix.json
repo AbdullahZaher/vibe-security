@@ -21,16 +21,16 @@
     "probe_checks": 16,
     "probe_passed": 16,
     "probe_failed": 0,
-    "unit_suite_tests": 265,
-    "unit_suite_passed": 264,
+    "unit_suite_tests": 274,
+    "unit_suite_passed": 273,
     "unit_suite_skipped": 1,
     "unit_suite_failed": 0,
-    "adapter_regression_tests": 34,
-    "adapter_regression_passed": 34,
+    "adapter_regression_tests": 42,
+    "adapter_regression_passed": 42,
     "host_platform_controls_verified": true,
     "runtime_hardening_decision": "runtime_hardening_verified",
     "skill_bundled_arbitrary_code_sandbox": false,
-    "verified_scope": "macOS Seatbelt filesystem default-deny least-privilege read policy (R-01, R-05), unconditional network egress denial (R-03), cryptographic command binding and ExecutionSpec attestation (R-02, R-07), cross-instance replay prevention via thread/file-locked ApprovalStore (R-07), raw command argument telemetry sanitization (R-07), incremental stream bounding with process group termination (R-04), unconditional descendant process group cleanup in finally (R-06), and fail-closed platform checks",
+    "verified_scope": "macOS Seatbelt filesystem default-deny least-privilege read policy (R-01, R-05), unconditional network egress denial (R-03), cryptographic command binding and ExecutionSpec attestation (R-02, R-07, A2), cross-process persistent replay prevention via thread/file-locked ApprovalStore (R-07, A1), raw command argument telemetry sanitization (R-07), incremental stream bounding with process group termination (R-04), unconditional descendant process group cleanup in finally (R-06, A3), and fail-closed platform checks",
     "not_verified_scope": "production containers/VMs, external egress L7 proxy, multi-tenant cloud agent isolation"
   },
   "matrix": [
@@ -301,6 +301,78 @@
       "layer": "host_adapter",
       "expected": "telemetry contains executable, command_sha256, command_arg_count; raw arguments absent",
       "actual": "raw command strings absent; command_sha256, executable, command_arg_count preserved",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "a1_cross_process_replay_prevention",
+      "requirement": "A1 replay prevention: separate host processes cannot reuse consumed authorizations",
+      "layer": "host_adapter",
+      "expected": "first subprocess exits 0, second subprocess exits 1 (replay rejected)",
+      "actual": "subprocess 1 consumed approval (exit 0); subprocess 2 rejected (exit 1)",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "a1_approval_store_corruption_fail_closed",
+      "requirement": "A1 corruption safety: corrupted store file fails closed without permitting replay",
+      "layer": "host_adapter",
+      "expected": "dispatch blocked=True; occurred=False; approval store error",
+      "actual": "dispatch blocked=True; occurred=False; reason='approval store error (fail-closed)'",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "a1_approval_store_permissions_secure",
+      "requirement": "A1 permission hardening: approval store directory mode 0o700, file mode 0o600",
+      "layer": "host_adapter",
+      "expected": "store file permissions exactly 0o600",
+      "actual": "file mode octal 0o600 verified",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "a2_mandatory_spec_sha256_attestation",
+      "requirement": "A2 mandatory attestation: verify_local dispatches require non-empty spec_sha256",
+      "layer": "execution_profiles",
+      "expected": "omitted spec_sha256 in host attestation rejected (status: not_verified / blocked)",
+      "actual": "dispatch blocked=True; reason='host attestation missing mandatory spec_sha256'",
+      "result": "pass",
+      "control_owner": "skill_controller"
+    },
+    {
+      "id": "a2_mandatory_command_sha256_attestation",
+      "requirement": "A2 mandatory command attestation: verify_local dispatches require non-empty command_sha256",
+      "layer": "execution_profiles",
+      "expected": "omitted command_sha256 in host attestation rejected (status: not_verified / blocked)",
+      "actual": "dispatch blocked=True; reason='host attestation missing mandatory command_sha256'",
+      "result": "pass",
+      "control_owner": "skill_controller"
+    },
+    {
+      "id": "a2_mismatched_spec_sha256_rejected",
+      "requirement": "A2 spec integrity: forged or mismatched spec_sha256 in attestation rejected",
+      "layer": "execution_profiles",
+      "expected": "mismatched spec_sha256 rejected before process creation",
+      "actual": "dispatch blocked=True; reason='execution specification does not match authorized spec_sha256'",
+      "result": "pass",
+      "control_owner": "skill_controller"
+    },
+    {
+      "id": "a3_process_group_descendant_cleanup",
+      "requirement": "A3 process cleanup: all background worker processes in session process group terminated",
+      "layer": "host_adapter",
+      "expected": "all background worker PIDs terminated via killpg in finally",
+      "actual": "all 3 worker processes terminated; os.kill(pid, 0) raises OSError",
+      "result": "pass",
+      "control_owner": "host_adapter"
+    },
+    {
+      "id": "a3_setsid_escape_boundary_documented",
+      "requirement": "A3 POSIX containment boundary: setsid() session escape documented as unsupported on macOS Seatbelt",
+      "layer": "host_adapter",
+      "expected": "setsid() escape demonstrated and documented; fail-closed boundary enforced",
+      "actual": "setsid() escapes saved_pgid; limitation documented; multi-tenant requires microVM/container",
       "result": "pass",
       "control_owner": "host_adapter"
     }
