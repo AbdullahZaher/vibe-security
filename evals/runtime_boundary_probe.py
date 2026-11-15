@@ -215,11 +215,14 @@ def main() -> int:
 
         # Test IsolatedHostAdapter integration
         def _attest(req):
+            cmd = req.get("command")
             return HostAttestation(
                 request_sha256=digest(req),
                 authorization_ref="auth-probe",
                 isolation_ref="iso-probe",
                 enforced_controls=CONTROLS,
+                command_sha256=digest(cmd) if cmd else "",
+                spec_sha256=req.get("spec_sha256", ""),
             )
         adapter = IsolatedHostAdapter(fixture, scratch, target="synthetic", revision="a" * 40,
                                       attestation_provider=_attest)

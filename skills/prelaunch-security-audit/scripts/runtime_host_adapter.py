@@ -71,48 +71,72 @@ class ExecutionSpec:
 
 
 class ApprovalStore:
-    """Atomic single-use authorization registry preventing replay across instances and processes (R-07)."""
+    """Atomic single-use authorization registry preventing replay across instances and processes (A1, R-07)."""
 
     def __init__(self, storage_path: Path | None = None):
         self.storage_path = Path(storage_path).resolve() if storage_path else None
         self._consumed: set[str] = set()
         self._lock = threading.Lock()
+        self._corrupted_err: str | None = None
         if self.storage_path and self.storage_path.exists():
             try:
-                data = json.loads(self.storage_path.read_text(encoding="utf-8"))
-                if isinstance(data, list):
-                    self._consumed.update(data)
-            except Exception:
-                pass
+                self._consumed.update(self._load_from_disk())
+            except Exception as exc:
+                self._corrupted_err = str(exc)
+
+    def _load_from_disk(self) -> set[str]:
+        if not self.storage_path or not self.storage_path.exists():
+            return set()
+        text = self.storage_path.read_text(encoding="utf-8")
+        if not text.strip():
+            return set()
+        try:
+            data = json.loads(text)
+        except Exception as exc:
+            raise ValueError(f"Approval store file {self.storage_path} is corrupted: {exc}") from exc
+        if not isinstance(data, list):
+            raise ValueError(f"Approval store file {self.storage_path} is corrupted: expected list schema")
+        return set(data)
 
     def consume(self, request_id: str, authorization_ref: str, spec_sha256: str) -> bool:
-        """Atomically consume an approval. Returns True if consumed, False if replayed."""
+        """Atomically consume an approval. Returns True if consumed, False if replayed. Fails closed on corruption."""
+        if self._corrupted_err:
+            raise ValueError(f"Approval store file {self.storage_path} is corrupted: {self._corrupted_err}")
         key = f"{request_id}:{authorization_ref}:{spec_sha256}"
         with self._lock:
             if key in self._consumed:
                 return False
             if self.storage_path:
-                lock_file = self.storage_path.with_suffix(".lock")
-                with open(lock_file, "w") as lf:
-                    fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
+                self.storage_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+                lock_file = self.storage_path.with_name(f"{self.storage_path.name}.lock")
+                lock_fd = os.open(lock_file, os.O_RDWR | os.O_CREAT, 0o600)
+                try:
+                    fcntl.flock(lock_fd, fcntl.LOCK_EX)
                     try:
-                        on_disk = set()
-                        if self.storage_path.exists():
-                            try:
-                                d = json.loads(self.storage_path.read_text(encoding="utf-8"))
-                                if isinstance(d, list):
-                                    on_disk.update(d)
-                            except Exception:
-                                pass
+                        on_disk = self._load_from_disk()
                         if key in on_disk:
                             self._consumed.add(key)
                             return False
                         on_disk.add(key)
                         self._consumed.add(key)
-                        self.storage_path.write_text(json.dumps(sorted(on_disk)), encoding="utf-8")
+                        # Atomic file write with strict 0o600 permissions
+                        tmp_path = self.storage_path.with_name(f"{self.storage_path.name}.tmp.{os.getpid()}")
+                        tmp_fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                        try:
+                            with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+                                json.dump(sorted(on_disk), f)
+                        except Exception:
+                            try:
+                                os.unlink(tmp_path)
+                            except OSError:
+                                pass
+                            raise
+                        os.replace(tmp_path, self.storage_path)
                         return True
                     finally:
-                        fcntl.flock(lf.fileno(), fcntl.LOCK_UN)
+                        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                finally:
+                    os.close(lock_fd)
             else:
                 self._consumed.add(key)
                 return True
@@ -120,18 +144,51 @@ class ApprovalStore:
     def is_consumed(self, request_id: str, authorization_ref: str, spec_sha256: str) -> bool:
         key = f"{request_id}:{authorization_ref}:{spec_sha256}"
         with self._lock:
-            return key in self._consumed
+            if key in self._consumed:
+                return True
+            if self.storage_path and self.storage_path.exists():
+                return key in self._load_from_disk()
+            return False
 
     def clear(self):
         with self._lock:
             self._consumed.clear()
+            if self.storage_path and self.storage_path.exists():
+                try:
+                    lock_file = self.storage_path.with_name(f"{self.storage_path.name}.lock")
+                    lock_fd = os.open(lock_file, os.O_RDWR | os.O_CREAT, 0o600)
+                    try:
+                        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+                        try:
+                            self.storage_path.unlink(missing_ok=True)
+                        finally:
+                            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                    finally:
+                        os.close(lock_fd)
+                except OSError:
+                    pass
 
 
-_GLOBAL_APPROVAL_STORE = ApprovalStore()
+def get_default_approval_path() -> Path:
+    env_path = os.environ.get("VIBE_SECURITY_APPROVAL_STORE")
+    if env_path:
+        return Path(env_path).resolve()
+    base_dir = Path.home() / ".vibe-security"
+    try:
+        base_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    except OSError:
+        pass
+    return (base_dir / "approvals.json").resolve()
+
+
+_DEFAULT_APPROVAL_STORE: ApprovalStore | None = None
 
 
 def get_default_approval_store() -> ApprovalStore:
-    return _GLOBAL_APPROVAL_STORE
+    global _DEFAULT_APPROVAL_STORE
+    if _DEFAULT_APPROVAL_STORE is None:
+        _DEFAULT_APPROVAL_STORE = ApprovalStore(get_default_approval_path())
+    return _DEFAULT_APPROVAL_STORE
 
 
 def _quote_sb(path: Path) -> str:
@@ -429,6 +486,7 @@ class IsolatedHostAdapter:
         if "spec_sha256" in request and request["spec_sha256"] != spec_digest:
             event["reason"] = "execution spec digest does not match authorized spec_sha256"
             return {"occurred": False, "blocked": True, "reason": event["reason"]}
+        request["spec_sha256"] = spec_digest
 
         # Assess request against policy and host attestation
         try:
@@ -448,10 +506,14 @@ class IsolatedHostAdapter:
 
         effective_auth_ref = verdict.get("authorization_ref", auth_ref)
 
-        # R-07: Single-use approval consumption at trusted host boundary (cross-instance/cross-process)
+        # R-07 / A1: Single-use approval consumption at trusted host boundary (cross-instance/cross-process)
         req_id = request.get("id", "")
-        if not self.approval_store.consume(req_id, effective_auth_ref, spec_digest):
-            event["reason"] = "authorization replay rejected: approval already consumed"
+        try:
+            if not self.approval_store.consume(req_id, effective_auth_ref, spec_digest):
+                event["reason"] = "authorization replay rejected: approval already consumed"
+                return {"occurred": False, "blocked": True, "reason": event["reason"]}
+        except Exception as exc:
+            event["reason"] = f"approval store error (fail-closed): {exc}"
             return {"occurred": False, "blocked": True, "reason": event["reason"]}
 
         # Host sandbox availability check

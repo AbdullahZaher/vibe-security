@@ -93,14 +93,26 @@ def assess(request, *, attest=None):
     if (not isinstance(authority, HostAttestation) or authority.request_sha256 != digest(request)
             or not authority.authorization_ref):
         return result
-    if authority.command_sha256:
+    if request['effect'] in {'verify_local', 'modify_local'}:
+        if not authority.command_sha256:
+            return {**result, 'reason': 'host attestation missing mandatory command_sha256 for local execution'}
         cmd = request.get('command')
         if not cmd or digest(cmd) != authority.command_sha256:
             return {**result, 'reason': 'command does not match authorized command_sha256'}
-    if authority.spec_sha256:
+        if not authority.spec_sha256:
+            return {**result, 'reason': 'host attestation missing mandatory spec_sha256 for local execution'}
         spec_sha = request.get('spec_sha256')
         if not spec_sha or spec_sha != authority.spec_sha256:
             return {**result, 'reason': 'execution specification does not match authorized spec_sha256'}
+    else:
+        if authority.command_sha256:
+            cmd = request.get('command')
+            if not cmd or digest(cmd) != authority.command_sha256:
+                return {**result, 'reason': 'command does not match authorized command_sha256'}
+        if authority.spec_sha256:
+            spec_sha = request.get('spec_sha256')
+            if not spec_sha or spec_sha != authority.spec_sha256:
+                return {**result, 'reason': 'execution specification does not match authorized spec_sha256'}
     if request['effect'] in {'verify_local', 'modify_local', 'network_read', 'external_write'}:
         if (request['profile'] != 'isolated-local' or not authority.isolation_ref
                 or not CONTROLS <= authority.enforced_controls):
