@@ -9,8 +9,17 @@ from plan_guard import evaluate  # noqa: E402
 
 class TestPlanGuard(unittest.TestCase):
     def test_observe_is_candidate_allow(self):
-        result = evaluate({"actions": [{"class": "observe", "command": "git status --short"}]})
+        result = evaluate({"actions": [{"class": "observe", "command": "git -c core.fsmonitor=false status --short"}]})
         self.assertEqual(result["decisions"][0]["decision"], "allow")
+
+    def test_unhardened_git_observation_requires_review(self):
+        # Bare git status or git diff without fsmonitor/textconv hardening requires approval.
+        result = evaluate({"actions": [
+            {"class": "observe", "command": "git status --short"},
+            {"class": "observe", "command": "git diff --no-ext-diff"}
+        ]})
+        self.assertEqual(result["decisions"][0]["decision"], "ask")
+        self.assertEqual(result["decisions"][1]["decision"], "ask")
 
     def test_external_write_is_never_automatically_authorized(self):
         result = evaluate({"actions": [{"class": "external_write", "target": "issue #12", "destination": "github.com", "command": "create issue"}]})

@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Audit resource accounting v0.5.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "target",
+    "revision",
+    "profile",
+    "coverage_scope",
+    "limits",
+    "usage",
+    "measurement_refs",
+    "confirmation_reserve_steps",
+    "deferred_unit_ids",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.5.0"
+    },
+    "target": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "profile": {
+      "enum": [
+        "quick",
+        "standard",
+        "deep"
+      ]
+    },
+    "coverage_scope": {
+      "enum": [
+        "partial",
+        "discovered_scope"
+      ]
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "tool_calls",
+        "steps",
+        "tokens",
+        "cost_usd",
+        "wall_seconds"
+      ],
+      "properties": {
+        "tool_calls": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "const": "unknown"
+            }
+          ]
+        },
+        "steps": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "const": "unknown"
+            }
+          ]
+        },
+        "tokens": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "const": "unknown"
+            }
+          ]
+        },
+        "cost_usd": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "const": "unknown"
+            }
+          ]
+        },
+        "wall_seconds": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "const": "unknown"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "usage": {
+      "type": "object",
+      "required": [
+        "tool_calls",
+        "steps",
+        "tokens",
+        "cost_usd",
+        "wall_seconds"
+      ],
+      "properties": {
+        "tool_calls": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "const": "unknown"
+            }
+          ]
+        },
+        "steps": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "const": "unknown"
+            }
+          ]
+        },
+        "tokens": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "const": "unknown"
+            }
+          ]
+        },
+        "cost_usd": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "const": "unknown"
+            }
+          ]
+        },
+        "wall_seconds": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "const": "unknown"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "measurement_refs": {
+      "type": "object",
+      "required": [
+        "tool_calls",
+        "steps",
+        "tokens",
+        "cost_usd",
+        "wall_seconds"
+      ],
+      "properties": {
+        "tool_calls": {
+          "type": "string",
+          "minLength": 1
+        },
+        "steps": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tokens": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cost_usd": {
+          "type": "string",
+          "minLength": 1
+        },
+        "wall_seconds": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "confirmation_reserve_steps": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "deferred_unit_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "additionalProperties": false
+}

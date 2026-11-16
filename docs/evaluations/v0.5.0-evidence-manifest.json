@@ -1,0 +1,267 @@
+{
+  "schema": "v0.5.0-evidence-manifest-v1",
+  "generated_at": "2026-11-15T20:08:08Z",
+  "repository": "https://github.com/AbdullahZaher/vibe-security",
+  "branch": "fix/v050-independent-release-blockers-20261115",
+  "pull_request": "https://github.com/AbdullahZaher/vibe-security/pull/3",
+  "git": {
+    "commit": "e9a50054b1ba058998dcb2f47a69a27001d90ac5",
+    "tree": "4b0f13270fa92395a2f1e5bd96d857633ac80210",
+    "skill_tree": "3242bf0bf624641e49113cdd5ee9a8b837440726",
+    "baseline_commit": "0f2237887448686a8e2479e360a390c6abe2529c",
+    "candidate_commit": "b0b756c9f31ce1d0b5063ada1b459595770afbfc",
+    "candidate_tree": "9bac8bd2dceb8780ac2f5707342a8064f6ff7df9",
+    "candidate_skill_tree": "9bd01709e9e236e809e897f9b2c600f8ad75e6b7"
+  },
+  "host": {
+    "hostname": "MacBook-Pro-von-Abdullah.local",
+    "os": "macOS 15.7.3",
+    "build": "24G419",
+    "kernel": "24.6.0",
+    "arch": "arm64",
+    "python": "3.13.7",
+    "evidence_origin": "developer-reported, not independently signed/validated by corrective reviewer"
+  },
+  "benchmark_targets": {
+    "target1_multitenant_saas": "4a320c495db407794be25bea811a26c772d10dd9",
+    "target2_rest_graphql": "f1d2f870f75755bb184c9fd6e9591da11aa4bc2d",
+    "target3_webhooks_queue": "fadebd8f047817ace4fef434a51905243b00db9c",
+    "target4_ai_mcp_rag": "e39f38b7a640f8cafa93ed7727c0f379eedd17be",
+    "target5_secure_control": "7037e920cab1d1ebe3d2c7bf490d7237347e14fa"
+  },
+  "evaluation_sessions": {
+    "Condition_A_Baseline": {
+      "session_id": "7ca831af-1bbb-418b-8f19-032b7859552b",
+      "model": "Gemini 3.8 Flash (High)",
+      "role": "Baseline Security Auditor",
+      "treatment": "No security skill"
+    },
+    "Condition_B_v040": {
+      "session_id": "2a7e815a-17df-402f-baf6-f2fa03337cdc",
+      "model": "Gemini 3.8 Flash (High)",
+      "role": "v0.4.0 Security Auditor",
+      "treatment": "prelaunch-security-audit v0.4.0-rc2 (commit 60d985a)"
+    },
+    "Condition_C_v050": {
+      "session_id": "31922005-cc62-49b8-96a7-bd56b5fbcbd1",
+      "model": "Gemini 3.8 Flash (High)",
+      "role": "v0.5.0 Security Auditor",
+      "treatment": "prelaunch-security-audit v0.5.0-rc1"
+    }
+  },
+  "historical_discrepancy_reconciliation": {
+    "target_file": "docs/security/v0.5.0-runtime-test-matrix.json",
+    "historical_recorded_commit": "8e507e253c870f5d8e68f4b8c519435b1dd902e0",
+    "historical_recorded_timestamp": "2026-11-15T21:00:00Z",
+    "discrepancy_analysis": "Author-supplied timezone-confusion hypothesis, not independently authenticated; historical file preserved verbatim.",
+    "action_taken": "Retain original historical matrix; ensure current file-digest claims match bytes, without asserting host or release provenance."
+  },
+  "artifact_digests": {
+    "CHANGELOG.md": {
+      "sha256": "27ffa8099d8c5015ee60f59c24ce54a82c7ec75bc04d1ae2cfaac0d63957a2d2",
+      "bytes": 12388
+    },
+    "skills/prelaunch-security-audit/SKILL.md": {
+      "sha256": "beed1112d1d0f5611fb7b9aeefbe535a683b4abe028a5b3793930c9ef3cc8fe4",
+      "bytes": 19334
+    },
+    "skills/prelaunch-security-audit/scripts/runtime_host_adapter.py": {
+      "sha256": "87dc7e4845acd24a73182b778b73719bc17bd6889e350e00db71b43d2a49922a",
+      "bytes": 23972
+    },
+    "skills/prelaunch-security-audit/scripts/execution_profiles.py": {
+      "sha256": "bb995fe43a0d53ebc51fc81fd7e4b26cc6c1bcbcc1798a5896d81b86318199ee",
+      "bytes": 10731
+    },
+    "skills/prelaunch-security-audit/scripts/render_report.py": {
+      "sha256": "20cd5f618b7a67d042774e77b9384e1bd6ca882dde09a66d76f3179358e50f76",
+      "bytes": 24626
+    },
+    "skills/prelaunch-security-audit/tests/test_independent_release_blockers.py": {
+      "sha256": "d2e2e993320a504fdc9b0fd3d87627c9ee8ae4e74e63d082f9703244517a8b97",
+      "bytes": 8040
+    },
+    "skills/prelaunch-security-audit/tests/test_runtime_host_adapter.py": {
+      "sha256": "01a951b7c0adc7be363cd79c018d3bedc7f18f23bc91327223172cc0d8b90178",
+      "bytes": 54722
+    },
+    "evals/macos_host_verifier.py": {
+      "sha256": "e9598f60577419ebe277d81573c08677725fd459c8b618bd700a7dc26577ac3c",
+      "bytes": 27778
+    },
+    "evals/release_readiness_gate.py": {
+      "sha256": "9d363843baed27805f745edeb53a93e564368bcd32bbe8a828146ac9564109b0",
+      "bytes": 4079
+    },
+    "evals/runtime_boundary_probe.py": {
+      "sha256": "5e889c6e9f2d4f61b9893425396695b5a6528cd4e00cf023a4aa7b70927945e3",
+      "bytes": 15144
+    },
+    "evals/benchmark_5p_ground_truth.json": {
+      "sha256": "d10d512862d5fdbe49f8db9d7310cdeb8a66e72cfbef27719c7ccccb203d9ff0",
+      "bytes": 13625
+    },
+    "docs/security/v0.5.0-remediation-verification-matrix.json": {
+      "sha256": "0effc1d6edf66c4a3f27fa927150c9bf5c6d647a291296d95e47f92fea055faa",
+      "bytes": 8556
+    },
+    "docs/security/v0.5.0-macos-host-verification.md": {
+      "sha256": "9cb6f453c8eb9ed0b8fe83ad4d8a3a798843c32c9a74556448d3a8c84acc274a",
+      "bytes": 14491
+    },
+    "docs/evaluations/v0.5.0-abc-metrics.json": {
+      "sha256": "1be764889aabc21405afb50d033faa8b49b2708a360c420edfa0ea9aa4739b8f",
+      "bytes": 5664
+    },
+    "docs/evaluations/v0.5.0-final-abc-evaluation.md": {
+      "sha256": "3f2a66618e4f2fe638f086c29c2f6f96960eb1a335767dc4db3da33b804dea8d",
+      "bytes": 13895
+    },
+    "docs/security/v0.5.0-final-security-certification.md": {
+      "sha256": "970d72322605cc899a2586c595f002293d27ed0b98a2fe55c0dc3fae2b0af4b7",
+      "bytes": 19239
+    },
+    "docs/release/v0.5.0-release-readiness-checklist.md": {
+      "sha256": "798d5a71f9f0533c9ae21f9745ebdaf0f8ab8353443d20f1ea14e3b4d258dae4",
+      "bytes": 13827
+    },
+    "docs/security/v0.5.0-runtime-test-matrix.json": {
+      "sha256": "212773edf1966a68333f6a467b0444314bd0f015084af492f42df4ca2d8e820f",
+      "bytes": 16847
+    },
+    "docs/security/v0.5.0-original-findings-crosswalk.json": {
+      "sha256": "b769fac58e4e29bb6940c0be13f379f56dc4aa3de888fd542f04c52f49ad1338",
+      "bytes": 11831
+    },
+    "evals/verify_evidence_manifest.py": {
+      "sha256": "80307e56e01b8d0de3fcf38c1886c9e7a5e16020a0241669faf959a57a4087a0",
+      "bytes": 3495
+    },
+    "skills/prelaunch-security-audit/tests/test_evidence_manifest_gate.py": {
+      "sha256": "8237b5db860f729639e17de4fa9a449e41963542c26b6bd68a850b7b51f654e8",
+      "bytes": 2617
+    },
+    "docs/security/v0.5.0-release-readiness-blockers.md": {
+      "sha256": "4fca3d3c8fb458a94be9f5ef2fdd783a81c030f8481f2a1f050212073e467e52",
+      "bytes": 6339
+    },
+    "evals/abc_trial_readiness.py": {
+      "sha256": "6bd2ac9f14bcd6abe58f0cadb01d4d482a2835afc7d60086782b170a786171cd",
+      "bytes": 4300
+    },
+    "skills/prelaunch-security-audit/tests/test_abc_trial_readiness.py": {
+      "sha256": "e0df7e7699233da8894aea53ee0683c118b509f9ba48482352d01f2242b05f33",
+      "bytes": 3439
+    },
+    "docs/release/v0.5.0-evaluation-and-governance-handoff.md": {
+      "sha256": "b9dc75350e59b9764e15c95d1574e997bc564a79bf418e3885b0eb025e41a0ab",
+      "bytes": 12398
+    },
+    "docs/release/v0.5.0-github-governance-remediation.md": {
+      "sha256": "20e15be588d104d18f0fcaf83cfc60f4a48f53579aa515fa79194f702bd24788",
+      "bytes": 4766
+    },
+    "evals/verify_release_tag_ruleset.py": {
+      "sha256": "ddd559069fa52129d4b65ee8a6a0cab7eab6086c727ab69f0c3b94979491f6f0",
+      "bytes": 4179
+    },
+    "skills/prelaunch-security-audit/tests/test_release_tag_ruleset.py": {
+      "sha256": "40fc1205e079650a27b2fea5e821d234fd9a59ff8ac53eac1e4e00f4d133a37b",
+      "bytes": 4122
+    }
+  },
+  "manifest_scope": {
+    "evidence_kind": "SHA256 repository file content integrity only; not host provenance or release attestation",
+    "historical_source_commit": "e9a50054b1ba058998dcb2f47a69a27001d90ac5",
+    "historical_source_tree": "4b0f13270fa92395a2f1e5bd96d857633ac80210",
+    "pre_correction_evidence_commit": "b8901c6860ca483d730cdeeb945025bb98792d45",
+    "pre_correction_evidence_tree": "cb9d7632361ed656c0bfe9bcb6ed09e4059e1283",
+    "verified_skill_tree": "3242bf0bf624641e49113cdd5ee9a8b837440726",
+    "final_release_commit": null,
+    "final_release_attestation": "must be produced outside Git history after SHA freeze by authorized human or trusted CI signing process",
+    "release_authorized": false,
+    "original_findings": "docs/security/v0.5.0-original-findings-crosswalk.json",
+    "unit_ci": {
+      "total": 308,
+      "passed": 276,
+      "skipped": 32,
+      "failed": 0,
+      "run_id": "43814434652"
+    },
+    "mac_host_attestation_independently_verified": false,
+    "provider_trial_attestation_independently_verified": false,
+    "accepted_authenticated_trial_slots": 0,
+    "candidate_commit": "b0b756c9f31ce1d0b5063ada1b459595770afbfc",
+    "candidate_tree": "9bac8bd2dceb8780ac2f5707342a8064f6ff7df9",
+    "candidate_skill_tree": "9bd01709e9e236e809e897f9b2c600f8ad75e6b7",
+    "github_branch_protection": {
+      "main_protected": true,
+      "feat_protected": true,
+      "ruleset_tag_immutable_id": 27351357,
+      "ruleset_tag_creation_id": 27356441,
+      "ruleset_tag_creation_name": "Restrict Release Tag Creation",
+      "required_checks": [
+        "unit-and-contract",
+        "mcp-stdio-integration"
+      ],
+      "required_signatures": true,
+      "linear_history": true,
+      "enforce_admins": true,
+      "verified_via_live_api": true
+    },
+    "mac_host_negative_tests": {
+      "executed": true,
+      "passed": 10,
+      "failed": 0,
+      "platform": "macOS 15.7.3 arm64 (Build 24G419)",
+      "verified_commit": "b0b756c9f31ce1d0b5063ada1b459595770afbfc"
+    },
+    "artifact_digest_count": 28,
+    "stable_release_authorized": false
+  },
+  "generated_at_is_historical": true,
+  "evaluation_session_status": "3 developer-reported multi-target pilots; 0 authenticated slots accepted",
+  "ground_truth_authentication": "not independently verified",
+  "evaluation_readiness_scope": {
+    "planned_slots_per_five_target_protocol": 45,
+    "paid_model_calls_executed_in_this_phase": 0,
+    "actual_trial_evidence_authenticated_by_this_phase": 0,
+    "governance_issue": "https://github.com/AbdullahZaher/vibe-security/issues/4",
+    "state": "BLOCK_STABLE_RELEASE"
+  },
+  "reviewed_provenance_correction": {
+    "review_reference_commit": "c36ca6cf1836ab89239a7ede9b32dda5519d537d",
+    "git_root_tree": "de71b8fcd9c5c8f17e5b1005c8a89ba85a31c8b2",
+    "skill_subtree": "77585b64825659a5b2198c3701ea2e2aeeb1f53c",
+    "incorrect_external_report_root_tree": "3430ee8c46077ffce6ca3cf76495b23d91cf9fef",
+    "review_reference_is_final_release_commit": false,
+    "final_release_sha_outside_git_manifest": null,
+    "original_findings_unverified": [
+      "IR-007",
+      "IR-008",
+      "IR-013"
+    ],
+    "github_branch_list_observed_protected": [
+      "main",
+      "feat/prelaunch-security-audit-v0.5.0-plan-20261114"
+    ],
+    "github_branch_protection_details_authenticated": false,
+    "github_branch_protection_details_error": "403 Resource not accessible by integration",
+    "tag_ruleset_27351357": {
+      "target": "tag",
+      "enforcement": "active",
+      "scope": "refs/tags/v*",
+      "rules": [
+        "update",
+        "deletion"
+      ],
+      "bypass_actor_count": 0,
+      "creation_rule_present": false
+    },
+    "governance_gate": "PARTIAL_TAG_CREATION_OPEN_BRANCH_DETAILS_UNVERIFIED",
+    "reviewed_revision_of_matrix": "cd83271a604ffeb5ed38cd403c7b82b289243fe1",
+    "host_source_independently_authenticated": false,
+    "independent_abc_trials_accepted": 0,
+    "release_decision": "BLOCK_STABLE_RELEASE"
+  }
+}

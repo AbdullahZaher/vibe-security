@@ -54,7 +54,7 @@ If executable checks are blocked, show **Authorized next checks (not executed)**
 with a small number of technology-relevant, copy-ready examples and the target
 environment/permissions needed. Review package scripts before recommending
 `pnpm test`/`npm test` or any command capable of side effects. A read-only
-`git status --short` or offline `preflight.py` may be suitable; active scans,
+`git -c core.fsmonitor=false status --short` or offline `preflight.py` may be suitable; active scans,
 network checks, database queries and Docker daemon access still require their
 own authorization and isolation. Mark outcomes `not_run`/`not_verified`.
 Never imply the suggested commands were actually executed.

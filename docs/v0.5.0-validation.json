@@ -1,0 +1,258 @@
+{
+  "skill_version": "0.5.0-rc1",
+  "baseline_revision": "60d985a81af7c1a4a1ed95c7b376b1b3c4a7ccac",
+  "code_revision": "949ee4b264d251debbddc634aabf987002fb56f8",
+  "environment": {
+    "host": "managed Linux workspace",
+    "python": "3.12.14",
+    "target_application_execution": false,
+    "os_sandbox_attested": false
+  },
+  "baseline": {
+    "cwd": "skills/prelaunch-security-audit",
+    "command": "python3 -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "total": 106,
+    "passed": 105,
+    "failed": 0,
+    "skipped": 1
+  },
+  "final_local": {
+    "cwd": "repository root",
+    "command": "python3 -m unittest discover -s skills/prelaunch-security-audit/tests -v",
+    "exit_code": 0,
+    "total": 219,
+    "passed": 218,
+    "failed": 0,
+    "skipped": 1,
+    "suites": [
+      {
+        "suite": "test_artifact_io",
+        "outcome": "ok",
+        "count": 6
+      },
+      {
+        "suite": "test_audit_diff",
+        "outcome": "ok",
+        "count": 11
+      },
+      {
+        "suite": "test_audit_inventory_coverage",
+        "outcome": "ok",
+        "count": 22
+      },
+      {
+        "suite": "test_evaluate_agent_traces",
+        "outcome": "ok",
+        "count": 26
+      },
+      {
+        "suite": "test_evidence_sealing",
+        "outcome": "ok",
+        "count": 8
+      },
+      {
+        "suite": "test_execution_profiles",
+        "outcome": "ok",
+        "count": 9
+      },
+      {
+        "suite": "test_github_repository",
+        "outcome": "ok",
+        "count": 3
+      },
+      {
+        "suite": "test_live_agent_runner",
+        "outcome": "ok",
+        "count": 20
+      },
+      {
+        "suite": "test_mcp_integration",
+        "outcome": "skipped",
+        "count": 1
+      },
+      {
+        "suite": "test_migration_parity",
+        "outcome": "ok",
+        "count": 7
+      },
+      {
+        "suite": "test_plan_guard",
+        "outcome": "ok",
+        "count": 11
+      },
+      {
+        "suite": "test_preflight",
+        "outcome": "ok",
+        "count": 4
+      },
+      {
+        "suite": "test_render_report",
+        "outcome": "ok",
+        "count": 28
+      },
+      {
+        "suite": "test_report_artifacts",
+        "outcome": "ok",
+        "count": 8
+      },
+      {
+        "suite": "test_skill_contract",
+        "outcome": "ok",
+        "count": 5
+      },
+      {
+        "suite": "test_trial_matrix",
+        "outcome": "ok",
+        "count": 12
+      },
+      {
+        "suite": "test_validate_budget",
+        "outcome": "ok",
+        "count": 6
+      },
+      {
+        "suite": "test_validate_findings",
+        "outcome": "ok",
+        "count": 32
+      }
+    ]
+  },
+  "ci": {
+    "run_url": "https://github.com/AbdullahZaher/vibe-security/actions/runs/43687129039",
+    "sha": "949ee4b264d251debbddc634aabf987002fb56f8",
+    "conclusion": "success",
+    "python": "3.13.18",
+    "unit_contract": {
+      "exit_code": 0,
+      "total": 219,
+      "passed": 210,
+      "failed": 0,
+      "skipped": 9
+    },
+    "mcp_stdio": {
+      "exit_code": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "crypto_archive": {
+      "exit_code": 0,
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    "live_agent_job": "skipped; paid inference opt-in was not invoked"
+  },
+  "development_failure": {
+    "command": "python3 -m unittest discover -s skills/prelaunch-security-audit/tests -v",
+    "exit_code": 1,
+    "total": 218,
+    "failed": 1,
+    "skipped": 1,
+    "cause": "New deep-JSON negative exposed parser recursion-limit variability",
+    "resolution": "Added explicit pre-decode depth bound; subsequent full run passed"
+  },
+  "controller_probe": {
+    "evidence_kind": "actual_static_controller_probe_not_model_trial",
+    "events": [
+      {
+        "sequence": 1,
+        "request_sha256": "d1c1bf75cf97f654a77b4473fbf5517ad0e81540f8a7921f80fe28974c5b1e3a",
+        "origin": "static_host_controller",
+        "occurred": true,
+        "blocked": false,
+        "effect": "observe",
+        "result_sha256": "47cebf5a3d516c0c3089b30f7f8a94b9d6cc1724b8a6bed5730be43b7598928d"
+      },
+      {
+        "sequence": 2,
+        "request_sha256": "19c2da45b16f498ade246a80fb24913f234a45496e94994b28eaa8d93ee2d82a",
+        "origin": "static_host_controller",
+        "occurred": false,
+        "blocked": true,
+        "reason": "outside_capability_or_invalid_source"
+      },
+      {
+        "sequence": 3,
+        "request_sha256": "689dcd98685590c1ea05443b3eeba8e3c93707fd91c1dd0b98079562717273b4",
+        "origin": "static_host_controller",
+        "occurred": false,
+        "blocked": true,
+        "reason": "outside_capability_or_invalid_source"
+      },
+      {
+        "sequence": 4,
+        "request_sha256": "0b7796c9ab57d952ab684329561d357a78ef41c422aee863813f2dfdca4e62f1",
+        "origin": "static_host_controller",
+        "occurred": false,
+        "blocked": true,
+        "reason": "outside_capability_or_invalid_source"
+      },
+      {
+        "sequence": 5,
+        "request_sha256": "9e4c87d7f8d5f07797fd4d739e02f5485f38a5da2bef33675ffde41dbb270521",
+        "origin": "static_host_controller",
+        "occurred": false,
+        "blocked": true,
+        "reason": "outside_capability_or_invalid_source"
+      },
+      {
+        "sequence": 6,
+        "request_sha256": "8c4b67debe131fd33126a93f6ac8e449ac4cb975063876911ab718dba718411c",
+        "origin": "static_host_controller",
+        "occurred": false,
+        "blocked": true,
+        "reason": "outside_capability_or_invalid_source"
+      }
+    ],
+    "listener_received_connection": false,
+    "write_marker_exists": false,
+    "limitations": [
+      "Does not test an OS sandbox or another agent host."
+    ]
+  },
+  "real_agent_trials": {
+    "performed": 0,
+    "precision": null,
+    "recall": null,
+    "release_ready": false,
+    "required": "Authorized frozen holdouts, independent ground truth/adjudication, host evidence and approved inference budget"
+  },
+  "retained_local_log_hashes": {
+    "baseline.log": "950e1a4c78d5d23369460e62da80be894f35d809aaa835f8f97fe6c72b979e91",
+    "full-tests.log": "3357f0b713fde6e5595e2261987535194dee2a5d6a13de3ed6d9ace4449889a4",
+    "ci-a788ab1.log": "78859650617a98c2f50d0feae70fe5bafc7c30f831c42049210d23270079a7b7",
+    "static-host-events.json": "b7bdbcaabaef4e7143ceedb1ce060531212151a959454242696884cb08cae982",
+    "review-failure-json-depth.log": "e1c1c1f0d5e2e3eb759e1dcc3402fde622361d504e026c7e07fc390eb9b2e61e",
+    "full-tests-final.log": "fbcd10eee08597e902f74a84c0bba48e2fe5a1e264f5d918f0a38531e35818b3",
+    "ci-949ee4b.log": "6321173145139f9d7012b06360b1de14630beb2993aa0a802b51dbbf34c5f6f0"
+  },
+  "additional_review_fix": "A direct synthetic probe demonstrated UTF-16 escaped quotes bypassing byte-based JSON nesting checks. Artifact JSON now requires UTF-8; a regression covers the bypass and valid UTF-8 strings. Final full run includes the regression.",
+  "prior_ci": {
+    "run_url": "https://github.com/AbdullahZaher/vibe-security/actions/runs/43686695490",
+    "sha": "a788ab1b32ee18226300b02590785bbaddf3cc57",
+    "conclusion": "success",
+    "python": "3.13.18",
+    "unit_contract": {
+      "exit_code": 0,
+      "total": 218,
+      "passed": 209,
+      "failed": 0,
+      "skipped": 9
+    },
+    "mcp_stdio": {
+      "exit_code": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "crypto_archive": {
+      "exit_code": 0,
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    "live_agent_job": "skipped; paid inference opt-in was not invoked"
+  }
+}
