@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import stat
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -44,46 +45,74 @@ def _new_private_file(path: Path, contents: bytes) -> None:
         stream.write(contents)
 
 
-def _validate_private_source(path: Path, size_limit: int) -> bytes:
-    if path.is_symlink() or not path.is_file():
-        raise ValueError("source is not a regular private file")
-    if path.stat().st_size > size_limit:
-        raise ValueError("source evidence exceeds allowed size")
-    return path.read_bytes()
+def _validate_private_source(path: Path | str, size_limit: int, dir_fd: int | None = None) -> bytes:
+    """Read one regular private file without following links or racing a swap."""
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise ValueError("safe private-file reading unavailable on this host")
+    try:
+        kwargs = {"dir_fd": dir_fd} if dir_fd is not None else {}
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, **kwargs)
+    except OSError as exc:
+        raise ValueError("source is not a regular private file") from exc
+    try:
+        meta = os.fstat(fd)
+        if not stat.S_ISREG(meta.st_mode):
+            raise ValueError("source is not a regular private file")
+        if meta.st_size > size_limit:
+            raise ValueError("source evidence exceeds allowed size")
+        with os.fdopen(fd, "rb", closefd=False) as stream:
+            data = stream.read(size_limit + 1)
+        if len(data) > size_limit:
+            raise ValueError("source evidence exceeds allowed size")
+        return data
+    finally:
+        os.close(fd)
 
 
 def collect(trace: Path, review_dir: Path) -> dict:
-    if review_dir.is_symlink() or not review_dir.is_dir():
+    if review_dir.is_symlink():
         raise ValueError("review_dir must be an existing directory, not a symlink")
-    trace_bytes = _validate_private_source(trace, MAX_TRACE_BYTES)
-    metadata = json.loads(trace_bytes)
-    runs = metadata.get("runs")
-    if not isinstance(runs, list) or not 1 <= len(runs) <= MAX_RUNS:
-        raise ValueError("trace must contain one to three trials")
-    seen = set()
-    for run in runs:
-        if not isinstance(run, dict) or not RUN_ID.fullmatch(str(run.get("run_id", ""))):
-            raise ValueError("invalid run identifier")
-        if run["run_id"] in seen:
-            raise ValueError("duplicate run identifier")
-        seen.add(run["run_id"])
-        if run.get("evidence_origin") not in {"live_model_tool_calls", "live_api_attempt_unconfirmed"}:
-            raise ValueError("refusing to label mock/controller data as live evidence")
-    reviews = {}
-    for path in review_dir.iterdir():
-        if not path.is_file() or path.is_symlink() or not path.name.endswith(".txt"):
-            raise ValueError("unexpected reviewer evidence file")
-        run_id = path.name[:-4]
-        if run_id not in seen:
-            raise ValueError("review evidence does not match a run")
-        review = _validate_private_source(path, MAX_REVIEW_BYTES).decode("utf-8")
-        if FAKE_SECRET in review:
-            raise ValueError("synthetic secret marker was not redacted")
-        reviews[run_id] = review
-    for run in runs:
-        if run.get("status") == "response_produced" and run["run_id"] not in reviews:
-            raise ValueError("missing reviewer output for a completed trial")
-    return {"format": VERSION, "trace": metadata, "reviews": reviews}
+    if not hasattr(os, "O_NOFOLLOW") or os.open not in getattr(os, "supports_dir_fd", set()):
+        raise ValueError("safe directory descriptor reading unavailable on this host")
+    try:
+        dfd = os.open(review_dir, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_DIRECTORY", 0))
+    except OSError as exc:
+        raise ValueError("review_dir must be an existing directory, not a symlink") from exc
+    try:
+        st = os.fstat(dfd)
+        if not stat.S_ISDIR(st.st_mode):
+            raise ValueError("review_dir must be an existing directory, not a symlink")
+        trace_bytes = _validate_private_source(trace, MAX_TRACE_BYTES)
+        metadata = json.loads(trace_bytes)
+        runs = metadata.get("runs")
+        if not isinstance(runs, list) or not 1 <= len(runs) <= MAX_RUNS:
+            raise ValueError("trace must contain one to three trials")
+        seen = set()
+        for run in runs:
+            if not isinstance(run, dict) or not RUN_ID.fullmatch(str(run.get("run_id", ""))):
+                raise ValueError("invalid run identifier")
+            if run["run_id"] in seen:
+                raise ValueError("duplicate run identifier")
+            seen.add(run["run_id"])
+            if run.get("evidence_origin") not in {"live_model_tool_calls", "live_api_attempt_unconfirmed"}:
+                raise ValueError("refusing to label mock/controller data as live evidence")
+        reviews = {}
+        for entry_name in os.listdir(dfd):
+            if not entry_name.endswith(".txt") or "/" in entry_name or "\\" in entry_name:
+                raise ValueError("unexpected reviewer evidence file")
+            run_id = entry_name[:-4]
+            if run_id not in seen:
+                raise ValueError("review evidence does not match a run")
+            review = _validate_private_source(entry_name, MAX_REVIEW_BYTES, dir_fd=dfd).decode("utf-8")
+            if FAKE_SECRET in review:
+                raise ValueError("synthetic secret marker was not redacted")
+            reviews[run_id] = review
+        for run in runs:
+            if run.get("status") == "response_produced" and run["run_id"] not in reviews:
+                raise ValueError("missing reviewer output for a completed trial")
+        return {"format": VERSION, "trace": metadata, "reviews": reviews}
+    finally:
+        os.close(dfd)
 
 
 def _assert_outside_checkout(path: Path) -> None:

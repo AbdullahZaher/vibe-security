@@ -13,10 +13,11 @@ from uuid import uuid4
 ROOT = Path(__file__).resolve().parents[3]
 if importlib.util.find_spec("cryptography"):
     sys.path.insert(0, str(ROOT / "evals"))
-    from seal_evidence import seal, unseal, collect
+    from seal_evidence import _validate_private_source, seal, unseal, collect
     from cryptography.exceptions import InvalidTag
 else:
     seal = unseal = collect = None
+    _validate_private_source = None
     InvalidTag = Exception
 
 KEY = b"c" * 32
@@ -109,6 +110,26 @@ class TestEvidenceSealing(unittest.TestCase):
         target.symlink_to(source)
         with self.assertRaises(ValueError):
             collect(self.trace, self.review)
+
+    def test_refuses_symlink_review_dir(self):
+        dir_link = self.root / "review_link"
+        dir_link.symlink_to(self.review, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, "review_dir must be an existing directory, not a symlink"):
+            collect(self.trace, dir_link)
+
+    def test_private_source_reader_never_follows_links_or_fifos(self):
+        source = self.root / "source.txt"
+        source.write_text("x")
+        link = self.root / "link.txt"
+        link.symlink_to(source)
+        fifo = self.root / "fifo.txt"
+        os.mkfifo(fifo)
+        for candidate in (link, fifo):
+            with self.assertRaises(ValueError):
+                _validate_private_source(candidate, 10)
+        self.assertEqual(_validate_private_source(source, 10), b"x")
+        with self.assertRaises(ValueError):
+            _validate_private_source(source, 0)
 
 
 if __name__ == "__main__":

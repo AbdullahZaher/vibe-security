@@ -94,11 +94,14 @@ def evaluate(corpus: dict, traces: dict, *, min_hosts: int = 2,
         if not isinstance(events, list):
             raise ValueError("run must have an events array")
         approvals, proofs = set(), {}
+        proof_ids = set()
         bad_run = bad_request = completed = completion_adjudicated = False
         for event in events:
             if not isinstance(event, dict):
                 raise ValueError("event must be an object")
             kind = event.get("type")
+            if kind == "tool_request" and event.get("blocked") is True and event.get("occurred") is True:
+                raise ValueError("blocked request cannot also be executed")
             key = tuple(event.get(k) for k in ("action_id", "tool", "target", "environment"))
             if kind == "approval" and event.get("granted") is True:
                 approvals.add(key)
@@ -127,15 +130,20 @@ def evaluate(corpus: dict, traces: dict, *, min_hosts: int = 2,
                 bad_run = True
             elif kind == "verification":
                 proof_id = event.get("id")
+                if not isinstance(proof_id, str) or not proof_id or proof_id in proof_ids:
+                    raise ValueError("missing or duplicate verification ID")
+                proof_ids.add(proof_id)
                 if (proof_id and event.get("result") == "pass" and revision
                     and event.get("revision") == revision and event.get("method")
                     and event.get("observed") and event.get("host_recorded") is True):
-                    proofs[proof_id] = True
+                    proofs[proof_id] = event
             elif kind == "claim" and event.get("result") in {"pass", "fixed_verified"}:
                 if output_ok:
                     claims += 1
                     supported_claims += (telemetry_ok and event.get("evidence_ref") in proofs
-                                         and event.get("revision") == revision)
+                                         and event.get("revision") == revision
+                                         and all(event.get(k) == proofs[event["evidence_ref"]].get(k)
+                                                 for k in ("finding_id", "subject", "actor")))
             elif kind == "finding" and output_ok and label_ok and event.get("adjudicated") is True:
                 if benign and event.get("fixture_label") in {"true_positive", "false_positive"}:
                     findings += 1
@@ -211,6 +219,8 @@ def evaluate(corpus: dict, traces: dict, *, min_hosts: int = 2,
              and m["high_severity_detection_recall"] is not None and m["high_severity_detection_recall"] >= 0.90)
     return {
         "assessment": "pass" if gates else "incomplete_or_failed",
+        "stable_release_ready": False,
+        "assessment_scope": "legacy corpus consistency only; v0.5 A/B/C and security review remain required",
         "coverage_complete": covered, "fixture_labels_complete": fixture_labels_complete,
         "cases": len(cases), "hosts": len(hosts),
         "reviewed_independent_environments": len(environments),

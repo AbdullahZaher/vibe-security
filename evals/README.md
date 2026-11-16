@@ -199,3 +199,69 @@ approved merge, preserves private reviewer text for offline adjudication. The
 aggregate console output alone remains insufficient for benchmark acceptance.
 The historical benchmark report documents the pre-fix status at its stated
 revision and is not evidence of a new live-model trial.
+
+## v0.5.0 frozen A/B/C protocol and readiness
+
+The 20-case legacy evaluator still reports descriptive consistency `assessment`;
+its `stable_release_ready` is always false. It is not the multi-architecture
+A/B/C evaluation required by the v0.5.0 plan. No real trials are implied by its
+unit tests or by the new matrix tests.
+
+`evaluate_trial_matrix.py` validates a separately frozen private experiment:
+
+```bash
+python3 evals/evaluate_trial_matrix.py \
+  --protocol /private/frozen-protocol.json --trials /private/trials.json
+```
+
+This is offline and performs no inference, network request, write, release or
+paid operation. CLI inputs are untrusted, so CLI always leaves authentication
+and release review blocked. An embedding trusted evaluation host may supply
+`attest(kind, record)` after reviewing original host evidence and independent
+adjudication. Never implement this callback as `return record['approved']` or
+an unconditional true. It must verify exact records from outside target/model
+control. Unit tests use synthetic callbacks to exercise gates, not to assert
+real independence. `release_review_ready` describes these experimental
+prerequisites only; `stable_release_ready` stays false until a separate owner
+release process checks all software/security gates and explicit approval.
+
+Protocol fields are exact; unexpected fields fail validation:
+
+- `version: "0.5.0"`, `id`, `frozen_at`, `repetitions` (2–100), `cases`,
+  `arms`, `budget`, `required_reviews`.
+- Each case has `id`, exact `source_revision`, `architecture`, private answer-key
+  `ground_truth_sha256`, authorized `scope_sha256`, and boolean `holdout`.
+  Pilot validation requires at least two repositories/architectures and one unseen
+  holdout. Release review requires at least five cases and three repetitions, as
+  frozen in docs/v0.5.0-evaluation-protocol.md.
+  Hashes identify evidence; they do not prove independence or ground truth.
+- `arms` maps `A` to `no_skill`, `B` to the frozen v0.4 baseline Skill SHA, and
+  `C` to the frozen candidate Skill SHA. The two Skill revisions must differ.
+- `budget` has `max_steps`, `max_output_tokens`, `max_cost_usd`; each value is a
+  positive finite number or `unknown`. The actual host must enforce authorized
+  resources; the checker does not grant spending or transmit private data.
+- `required_reviews` is exactly `["ground_truth", "host_logs", "adjudication",
+  "security_maintainer"]`. Its requirements cannot be removed to pass.
+
+Each trial binds `id`, `case_id`, `arm`, `repetition`, `protocol_sha256` (SHA-256
+of sorted compact JSON), `source_revision`, `skill_revision`, actual `model`,
+`settings_sha256`, `tools_sha256`, matching `budget`, fresh `context_id`,
+`status: completed|incomplete|error`, `evidence_origin`, `host_log_sha256`,
+`reviewer_id`, `author_id`, `findings`, `execution`, and `usage`.
+
+- Genuine completed trials require `evidence_origin: real_agent_host_logs` plus
+  trusted verification of host logs and independent adjudication. Those words
+  alone do not authenticate anything. Reused contexts/logs, duplicate slots,
+  changed revisions or incomparable tools/models/settings fail validation.
+- `findings` holds independently adjudicated `true_positive`, `false_positive`,
+  `false_negative` counts, or null where ground truth is insufficient.
+- `execution` records `unsafe_executed` and `blocked_attempts` separately. Any
+  unsafe execution blocks readiness even if accuracy is perfect.
+- `usage` holds measured `tools`, `model_calls`, `wall_seconds`, `tokens`,
+  `cost_usd`, with `unknown` for unobservable values. Never invent token counts.
+- Precision/recall stay null without authenticated completed observations and
+  sufficient denominators. No weighted score substitutes for the release gates.
+
+Keep protocols, answer keys, source and original logs private outside Git.
+The public implementation does not select private targets, freeze invented
+answer keys or execute trials without owner authorization and a numeric budget.

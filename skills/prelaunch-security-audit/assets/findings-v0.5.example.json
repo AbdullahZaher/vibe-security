@@ -1,0 +1,146 @@
+{
+  "schema_version": "0.5.0",
+  "target": "synthetic",
+  "revision": "0000000000000000000000000000000000000000",
+  "evidence": [
+    {
+      "id": "E1",
+      "finding_id": "F1",
+      "target": "synthetic",
+      "revision": "0000000000000000000000000000000000000000",
+      "actor": "tenant-a",
+      "resource": "tenant-b-record",
+      "kind": "source_analysis",
+      "method": "Trace route through database query",
+      "expected": "Tenant predicate",
+      "observed": "Synthetic example only: route and owner predicate have not been inspected",
+      "result": "observed",
+      "sources": [
+        {
+          "path": "auth.py",
+          "line_start": 1,
+          "line_end": 1,
+          "revision": "0000000000000000000000000000000000000000",
+          "status": "not_verified",
+          "sha256": ""
+        }
+      ],
+      "command": null,
+      "exit_code": null,
+      "invariant_id": "I1",
+      "failure_kind": "none",
+      "test_definition_sha256": null,
+      "provenance": {
+        "operator": "agent",
+        "timestamp": "2026-11-14T00:00:00Z",
+        "environment": "frozen-source",
+        "origin": "source_inspection",
+        "reference": "auth.py:1"
+      }
+    }
+  ],
+  "findings": [
+    {
+      "candidate": {
+        "id": "F1",
+        "target": "synthetic",
+        "revision": "0000000000000000000000000000000000000000",
+        "component": "api",
+        "path": "auth.py",
+        "root_cause": "Missing owner predicate",
+        "entry_point": "GET /record",
+        "actor": "tenant-a",
+        "resource": "tenant-b-record",
+        "trust_boundary": "tenant ownership",
+        "trace": [
+          "request -> query -> response"
+        ],
+        "defenses": [
+          "Session required but owner not checked"
+        ],
+        "prerequisites": [
+          {
+            "claim": "Route exists and is reachable by this actor",
+            "status": "unknown",
+            "evidence_ids": []
+          }
+        ],
+        "demonstrated_impact": "No demonstrated impact: this is a structural example",
+        "conditional_impacts": [],
+        "impact_basis": "conditional",
+        "complexity": [],
+        "evidence_ids": [
+          "E1"
+        ],
+        "hunter": {
+          "identity": "agent",
+          "context": "session"
+        },
+        "invariants": [
+          {
+            "id": "I1",
+            "property": "Tenant reads only own records",
+            "actors": [
+              "tenant-a",
+              "tenant-b"
+            ],
+            "resources": [
+              "tenant-b-record"
+            ]
+          }
+        ],
+        "minimal_fix": "Add owner predicate",
+        "regression_plan": "Assert cross-tenant denial",
+        "residual_unknowns": [
+          "Every application-specific claim needs actual source inspection"
+        ],
+        "fingerprint": "99336dd6c7978f1097c061713fcc244026fc0878c282a9245da8efacb283e033"
+      },
+      "candidate_sha256": "26cfb850872a447c178cc1206b6e2a4d6b5a4cf1d2a7830cb27140304083f276",
+      "verifications": [
+        {
+          "id": "V1",
+          "candidate_sha256": "26cfb850872a447c178cc1206b6e2a4d6b5a4cf1d2a7830cb27140304083f276",
+          "profile": "standard",
+          "verdict": "needs_validation",
+          "severity": "medium",
+          "confidence": "low",
+          "verification_tier": "not_verified",
+          "reviewer": {
+            "identity": "agent",
+            "context": "session",
+            "independent": false
+          },
+          "independence_ref": null,
+          "evidence_ids": [
+            "E1"
+          ],
+          "source_evidence_ids": [],
+          "disproof_attempt": "No source available; disproof pending",
+          "rationale": "Example only, no audit performed",
+          "next_check": "Inspect the owner-authorized frozen source and trace the candidate flow",
+          "limitations": [
+            "No source or runtime evidence has been verified"
+          ]
+        }
+      ],
+      "remediation": {
+        "status": "open",
+        "fixed_revision": null,
+        "changed_paths": [],
+        "diff_sha256": null,
+        "approval_ref": null,
+        "before_invariants_sha256": "3f9ab7413bc0dd6e26b3f02e4eff0c27b28b4c082a6ad46817297c91c0f382e9",
+        "after_invariants_sha256": "3f9ab7413bc0dd6e26b3f02e4eff0c27b28b4c082a6ad46817297c91c0f382e9",
+        "baseline_evidence_ids": [],
+        "post_evidence_ids": [],
+        "adjacent_cases": [],
+        "rollback": "Revert scoped patch",
+        "residual_risk": "Unpatched",
+        "high_impact": false,
+        "backup_ref": null,
+        "staging_evidence_ids": []
+      }
+    }
+  ]
+}

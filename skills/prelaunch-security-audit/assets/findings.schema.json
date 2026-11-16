@@ -2625,6 +2625,22 @@
         },
         "additionalProperties": true
       }
+    },
+    "attack_surface": {
+      "$ref": "attack-surface.schema.json",
+      "description": "Optional v0.5 artifact; semantic validation additionally requires the bundled Python validators."
+    },
+    "coverage_ledger": {
+      "$ref": "coverage-ledger.schema.json",
+      "description": "Optional v0.5 artifact; semantic validation additionally requires the bundled Python validators."
+    },
+    "finding_bundle": {
+      "$ref": "findings-v0.5.schema.json",
+      "description": "Optional v0.5 artifact; semantic validation additionally requires the bundled Python validators."
+    },
+    "audit_budget": {
+      "$ref": "audit-budget.schema.json",
+      "description": "Optional v0.5 artifact; semantic validation additionally requires the bundled Python validators."
     }
   }
 }

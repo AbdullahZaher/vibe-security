@@ -34,8 +34,24 @@ EVIDENCE_TIER = {"source", "build", "runtime", "deployment", "unspecified"}
 RESOLUTION_STATUS = {"open", "in_progress", "needs_approval", "fixed_verified", "false_positive_verified", "accepted_risk"}
 SECRET_PATTERNS = [
     re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----.*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", re.S),
+    re.compile(r"-----BEGIN PGP PRIVATE KEY BLOCK-----.*?-----END PGP PRIVATE KEY BLOCK-----", re.S),
     re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b"),
+    re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"),
+    re.compile(r"\bnpm_[A-Za-z0-9]{20,}\b"),
+    re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+    re.compile(r"\baws_secret_access_key\s*[:=]\s*[^\s,;]+", re.I),
+    re.compile(r"\bAWS_SECRET_ACCESS_KEY\s*[:=]\s*[^\s,;]+"),
+    re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b"),
+    re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}\b"),
+    re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"),
+    re.compile(r"\bsk_(?:live|test)_[A-Za-z0-9]{10,}\b"),
+    re.compile(r"\brk_live_[A-Za-z0-9]{10,}\b"),
     re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
+    re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{20,}", re.I),
+    re.compile(r"\bhooks\.slack\.com/services/[A-Za-z0-9_/]{20,}\b"),
+    re.compile(r"\bSK[A-Za-z0-9]{20,}\b"),
+    re.compile(r"\bSG\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\b"),
+    re.compile(r"Authorization:\s*Basic\s+[A-Za-z0-9+/=]{8,}", re.I),
     re.compile(r"\b(?:password|api[_-]?key|secret|access[_-]?token)\s*[:=]\s*[^\s,;]+", re.I),
 ]
 
@@ -91,8 +107,9 @@ def _validate_control(row: Any, index: int, revision: str = "not provided") -> d
     if result["status"] in {"pass", "fixed_verified"}:
         current_revision = revision not in {"", "not provided", "unspecified", None}
         wrong_revision = not current_revision or result.get("evidence_revision") != revision
+        fix_required = bool(result.get("fix", "").strip()) if result["status"] == "fixed_verified" else True
         if (result["test_result"] != "pass" or not result.get("test_method")
-                or not result.get("evidence") or wrong_revision):
+                or not result.get("evidence") or wrong_revision or not fix_required):
             result["status"] = "not_verified"
             result["test_result"] = "not_run"
             result["owner_action"] = (
@@ -102,7 +119,8 @@ def _validate_control(row: Any, index: int, revision: str = "not provided") -> d
     return result
 
 
-def render(data: dict[str, Any]) -> str:
+def render(data: dict[str, Any], *, source_root=None, artifact_root=None,
+           host_attestations=None, previous_findings=None) -> str:
     if not isinstance(data, dict) or not isinstance(data.get("controls"), list):
         raise ValueError("input must be an object with a 'controls' array")
     provided = data["controls"]
@@ -131,6 +149,22 @@ def render(data: dict[str, Any]) -> str:
         raise ValueError("verification_log IDs must be unique")
     log_by_id = {log.get("id"): log for log in logs
                  if isinstance(log.get("id"), str) and log.get("id")}
+    finding_ids = [f.get("id") for f in findings if isinstance(f, dict) and f.get("id")]
+    if len(set(finding_ids)) != len(finding_ids):
+        raise ValueError("finding IDs must be unique")
+    # Validate each claimed PASS, not only the aggregate recommendation.
+    for row in rows:
+        if row["status"] in {"pass", "fixed_verified"}:
+            proof = log_by_id.get(row.get("verification_ref"))
+            if not (proof and proof.get("control_id") == row["id"]
+                    and proof.get("revision") == revision and proof.get("result") == "pass"
+                    and row["evidence_tier"] != "unspecified"
+                    and all(isinstance(proof.get(k), str) and proof[k].strip()
+                            for k in ("method", "environment", "observed"))):
+                row["status"] = "not_verified"
+                row["owner_action"] = "PASS lacks a matching per-control verification record."
+    artifact_sections, artifact_blockers, artifact_incomplete = _artifact_sections(
+        data, source_root, artifact_root, host_attestations, previous_findings)
     checked_findings = []
     for issue in findings:
         if not isinstance(issue, dict) or issue.get("severity", "none") not in SEVERITY:
@@ -181,7 +215,7 @@ def render(data: dict[str, Any]) -> str:
             log.get("id") == row["verification_ref"]
             and log.get("control_id") == row["id"]
             and log.get("revision") == revision
-            and revision not in {"", "not provided", "unspecified", None}
+            and bool(revision) and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", revision)
             and log.get("result") == "pass"
             and all(isinstance(log.get(field), str) and log[field].strip()
                     for field in ("method", "environment", "observed"))
@@ -189,17 +223,22 @@ def render(data: dict[str, Any]) -> str:
         )
         for row in passed_controls
     )
-    if unresolved_high_risk:
+    if unresolved_high_risk or artifact_blockers:
         recommendation = "block launch"
     elif recommendation == "no blockers found in tested scope" and (
-        not verified_control_coverage
+        artifact_incomplete or not verified_control_coverage
         or any(row["status"] in {"failed", "needs_approval", "not_verified"}
                for row in rows)
     ):
         recommendation = "conditional launch"
+    # Report inputs and per-control logs are user/model-controlled JSON. No
+    # host-owned authentication of those legacy log records exists in this API.
+    # A self-consistent bundle must never render a positive release all-clear.
+    if recommendation == "no blockers found in tested scope":
+        recommendation = "conditional launch"
     result = [
         "# Prelaunch Security Review", "",
-        "> Evidence-based project review, not a security certification or penetration test.", "",
+        "> Structural consistency report only: supplied PASS logs are not authenticated host execution evidence.", "",
         "## Scope", "",
         f"- Project: {sanitized(scope.get('project', 'not specified'))}",
         f"- Revision: {sanitized(scope.get('revision', 'not specified'))}",
@@ -267,6 +306,7 @@ def render(data: dict[str, Any]) -> str:
              for k in ("id", "revision", "method", "environment", "expected", "observed", "result")) + " |")
     if not logs:
         result.append("| — | — | — | — | — | No tests recorded | not_run |")
+    result += artifact_sections
     result += ["", "## Test details / limitations", "",
                "- A PASS requires actual execution evidence on the evaluated revision; this renderer does not run tests.",
                "- Evidence provenance values in the input are claims, not authenticated attestations.",
@@ -278,18 +318,97 @@ def render(data: dict[str, Any]) -> str:
     return "\n".join(result)
 
 
+def _artifact_sections(data, source_root, artifact_root, host_attestations, previous_findings):
+    """Optional versioned artifacts extend, never replace, legacy control gates."""
+    sections, blockers, incomplete = [], False, False
+    scope = data.get("scope", {})
+    def bind(artifact):
+        if artifact.get("target") != scope.get("project") or artifact.get("revision") != scope.get("revision"):
+            raise ValueError("v0.5 artifact target/revision differs from report scope")
+    if "attack_surface" in data or "coverage_ledger" in data:
+        if not all(k in data for k in ("attack_surface", "coverage_ledger")):
+            raise ValueError("inventory and coverage ledger must be supplied together")
+        from validate_coverage import validate
+        bind(data["attack_surface"])
+        bind(data["coverage_ledger"])
+        summary = validate(data["coverage_ledger"], data["attack_surface"], source_root, artifact_root)
+        if summary["mode"] == "quick":
+            raise ValueError("quick ledger must use scoped Quick PR report, not full launch recommendation")
+        failed_checks = [row for row in data["coverage_ledger"]["evidence"]
+                         if row.get("result") == "fail"]
+        incomplete = bool(failed_checks) or bool(summary["inventory_without_ledger"]) or any(
+            summary["coverage_counts"][state] for state in
+            ("partially_covered", "blocked", "deferred", "unassessed"))
+        sections += ["", "## Attack surface and coverage", "",
+                     f"- Discovered in-scope inventory units: {summary['discovered_in_scope_units']}",
+                     f"- Inventory units represented in ledger: {summary['represented_inventory_units']}",
+                     f"- Inventory units without ledger entries: {len(summary['inventory_without_ledger'])}",
+                     f"- Executed checks recorded as failed: {len(failed_checks)}",
+                     "- Attack-surface completeness: unknown; outside-inventory assets remain unknown.",
+                     "- These denominators describe discovered scope, never the whole system."]
+        for status, count in summary["coverage_counts"].items():
+            sections.append(f"- {status}: {count}")
+        sections.extend(f"- Discovery limitation: {sanitized(limit)}" for limit in summary["discovery"]["limitations"])
+    if "finding_bundle" in data:
+        from validate_findings import validate
+        bind(data["finding_bundle"])
+        summary = validate(data["finding_bundle"], source_root=source_root,
+                           host_attestations=host_attestations, previous=previous_findings,
+                           inventory=data.get("attack_surface"))
+        blockers = bool(summary["unresolved_high_risk"])
+        sections += ["", "## v0.5 finding adjudication", "",
+                     "- Evidence authenticity requires independent review; structural validity is not attestation.",
+                     f"- Retained history compared: {summary['history_checked']}"]
+        for finding in data["finding_bundle"]["findings"]:
+            c, v, fix = finding["candidate"], finding["verifications"][-1], finding["remediation"]
+            sections += [f"- {sanitized(c['id'])}: {sanitized(v['verdict'])}; severity {sanitized(v['severity'])}; "
+                         f"confidence {sanitized(v['confidence'])}; tier {sanitized(v['verification_tier'])}; "
+                         f"remediation {sanitized(fix['status'])}",
+                         f"  - Root cause: {sanitized(c['root_cause'])}",
+                         f"  - Verification rationale: {sanitized(v['rationale'])}",
+                         f"  - Fixed revision: {sanitized(fix['fixed_revision'])}",
+                         f"  - Rollback: {sanitized(fix['rollback'])}",
+                         f"  - Residual risk: {sanitized(fix['residual_risk'])}"]
+            for review in finding["verifications"]:
+                sections.append(f"  - Review {sanitized(review['id'])}: {sanitized(review['verdict'])}; "
+                                f"reviewer {sanitized(review['reviewer']['identity'])}; "
+                                f"independent {review['reviewer']['independent']}; "
+                                f"rationale {sanitized(review['rationale'])}")
+            if v["next_check"]:
+                sections.append(f"  - Authorized next check (not executed): {sanitized(v['next_check'])}")
+            sections.extend(f"  - Limitation: {sanitized(limit)}" for limit in v["limitations"])
+    if "audit_budget" in data:
+        from validate_budget import validate
+        bind(data["audit_budget"])
+        summary = validate(data["audit_budget"])
+        if "coverage_ledger" in data:
+            deferred = {u["unit_id"] for u in data["coverage_ledger"]["units"] if u["status"] == "deferred"}
+            if set(summary["deferred_unit_ids"]) != deferred:
+                raise ValueError("budget deferred units must match ledger deferred units")
+        incomplete = incomplete or bool(summary["deferred_unit_ids"] or summary["budget_exceeded"])
+        sections += ["", "## Resource envelope", "",
+                     f"- Profile: {summary['profile']}; assessed scope: {summary['coverage_scope']}",
+                     f"- Deferred units: {len(summary['deferred_unit_ids'])}",
+                     "- Actual usage: " + sanitized(json.dumps(summary["usage"], sort_keys=True))]
+        if summary["profile"] == "quick":
+            raise ValueError("quick budget must use scoped Quick PR report, not full launch recommendation")
+    if sections:
+        sections += ["", "- Skill stable release readiness: not established by this report.", ""]
+    return sections, blockers, incomplete
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--source-root", type=Path, help="Frozen Git source for optional v0.5 artifacts")
+    parser.add_argument("--artifact-root", type=Path, help="Protected evidence directory")
     args = parser.parse_args()
     try:
-        if args.input.stat().st_size > 2_000_000:
-            raise ValueError("input too large (max 2 MB)")
-        data = json.loads(args.input.read_text(encoding="utf-8"))
-        content = render(data)
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(content, encoding="utf-8")
+        from audit_artifacts import load_json, write_new_artifact
+        data = load_json(args.input)
+        content = render(data, source_root=args.source_root, artifact_root=args.artifact_root)
+        write_new_artifact(args.output, content)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         parser.error(str(exc))
     print(f"Generated report: {args.output}")

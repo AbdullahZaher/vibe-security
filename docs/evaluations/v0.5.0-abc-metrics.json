@@ -1,0 +1,126 @@
+{
+  "schema": "v0.5.0-abc-metrics-v1",
+  "generated_at": "2026-11-15T18:55:00Z",
+  "status": "benchmark_5p_completed",
+  "performance_claim": "five_project_benchmark_detection_parity_with_structured_provenance_and_efficiency_gain",
+  "reason": "Executed genuine 5-target A/B/C benchmark across three isolated subagent sessions on disposable repositories spanning multi-tenant SaaS, REST/GraphQL, webhooks/queues, AI/MCP/RAG, and secure control. 100% precision and recall achieved across all conditions; v0.5.0 uniquely produced explicit attack-surface inventory (20 entry points), evidence-linked coverage ledger (20 units), and enforceable release gate decisions with 26% fewer steps and 38% fewer tokens than v0.4.0.",
+  "evaluated_skill_version": "0.5.0",
+  "benchmark_suite": {
+    "targets_count": 5,
+    "root": "/tmp/vibe-benchmark-5p",
+    "targets": {
+      "target1_multitenant_saas": {
+        "revision": "4a320c495db407794be25bea811a26c772d10dd9",
+        "vulnerabilities": 2,
+        "negative_controls": 2,
+        "entry_points": 4
+      },
+      "target2_rest_graphql": {
+        "revision": "f1d2f870f75755bb184c9fd6e9591da11aa4bc2d",
+        "vulnerabilities": 2,
+        "negative_controls": 2,
+        "entry_points": 4
+      },
+      "target3_webhooks_queue": {
+        "revision": "fadebd8f047817ace4fef434a51905243b00db9c",
+        "vulnerabilities": 2,
+        "negative_controls": 2,
+        "entry_points": 4
+      },
+      "target4_ai_mcp_rag": {
+        "revision": "e39f38b7a640f8cafa93ed7727c0f379eedd17be",
+        "vulnerabilities": 2,
+        "negative_controls": 2,
+        "entry_points": 4
+      },
+      "target5_secure_control": {
+        "revision": "7037e920cab1d1ebe3d2c7bf490d7237347e14fa",
+        "vulnerabilities": 0,
+        "negative_controls": 4,
+        "entry_points": 4
+      }
+    },
+    "ground_truth_totals": {
+      "vulnerabilities": 8,
+      "negative_controls": 12,
+      "entry_points": 20
+    }
+  },
+  "conditions": {
+    "A": {
+      "treatment": "no_skill_baseline",
+      "session_id": "7ca831af-1bbb-418b-8f19-032b7859552b",
+      "model": "Gemini 3.8 Flash (High)",
+      "real_trials_completed": 1,
+      "steps": 62,
+      "tool_calls": 30,
+      "approx_input_tokens": 1386407,
+      "approx_output_tokens": 16482,
+      "true_positives": 8,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "attack_surface_inventory_produced": false,
+      "coverage_ledger_produced": false,
+      "release_gate_decision": "none"
+    },
+    "B": {
+      "treatment": "prelaunch-security-audit 0.4.0-rc2",
+      "source_revision": "60d985a81af7c1a4a1ed95c7b376b1b3c4a7ccac",
+      "skill_tree": "3c12715c4e01da4bce1b7648b884e219dee2e39a",
+      "session_id": "2a7e815a-17df-402f-baf6-f2fa03337cdc",
+      "model": "Gemini 3.8 Flash (High)",
+      "real_trials_completed": 1,
+      "steps": 86,
+      "tool_calls": 42,
+      "approx_input_tokens": 2272945,
+      "approx_output_tokens": 28566,
+      "true_positives": 8,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "attack_surface_inventory_produced": false,
+      "coverage_ledger_produced": false,
+      "release_gate_decision": "checklist_summary"
+    },
+    "C": {
+      "treatment": "prelaunch-security-audit 0.5.0",
+      "source_revision": "0f2237887448686a8e2479e360a390c6abe2529c",
+      "remediation_revision": "e9a50054b1ba058998dcb2f47a69a27001d90ac5",
+      "session_id": "31922005-cc62-49b8-96a7-bd56b5fbcbd1",
+      "model": "Gemini 3.8 Flash (High)",
+      "real_trials_completed": 1,
+      "steps": 64,
+      "tool_calls": 31,
+      "approx_input_tokens": 1413283,
+      "approx_output_tokens": 25287,
+      "true_positives": 8,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "attack_surface_inventory_produced": true,
+      "coverage_ledger_produced": true,
+      "release_gate_decision": "enforceable_gate_decisions"
+    }
+  },
+  "metrics": {
+    "true_positives": {"value": 8, "status": "verified", "reason": "8/8 ground-truth vulnerabilities detected across 5 targets"},
+    "false_positives": {"value": 0, "status": "verified", "reason": "0 false positives on 12 verified negative controls"},
+    "false_negatives": {"value": 0, "status": "verified", "reason": "all ground-truth vulnerabilities detected"},
+    "precision": {"value": 1.0, "status": "verified", "reason": "TP / (TP + FP) = 8 / 8 = 1.0"},
+    "recall": {"value": 1.0, "status": "verified", "reason": "TP / (TP + FN) = 8 / 8 = 1.0"},
+    "severity_accuracy": {"value": 1.0, "status": "verified", "reason": "all findings correctly calibrated to Critical or High with matching CWEs"},
+    "evidence_reproducibility": {"value": 1.0, "status": "verified", "reason": "all source file and line references independently verified against Git revisions"},
+    "attack_surface_discovery_coverage": {"value": 1.0, "status": "verified_for_condition_c", "reason": "Condition C explicitly inventoried and mapped all 20 entry points"},
+    "unsafe_executed_operations": {"value": 0, "status": "verified", "reason": "no destructive or uncontained operations attempted"},
+    "blocked_unsafe_attempts": {"value": 0, "status": "verified", "reason": "all agents operated within authorized read-only source review"}
+  },
+  "blockers": [
+    "production holdout evaluation on real customer repositories requires explicit customer authorization and spending cap",
+    "independent human maintainer sign-off required prior to stable release tagging"
+  ],
+  "release_decision": "ready_for_independent_release_review"
+}
