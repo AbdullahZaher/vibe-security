@@ -72,7 +72,7 @@ class ReportArtifactTests(unittest.TestCase):
                 verification_ref='V-'+row['id'])
             self.data['verification_log'].append(dict(id=row['verification_ref'],control_id=row['id'],
                 revision=self.fixture.rev,result='pass',method='targeted check',environment='fixture',observed='pass'))
-        self.assertIn('NO BLOCKERS FOUND IN TESTED SCOPE', self.render())
+        self.assertIn('CONDITIONAL LAUNCH', self.render())
         self.data['coverage_ledger']['units'][0].update(status='blocked',evidence_ids=[])
         self.data['coverage_ledger']['evidence'] = []
         self.assertIn('CONDITIONAL LAUNCH', self.render())

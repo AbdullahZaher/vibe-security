@@ -219,7 +219,8 @@ class TestReport(unittest.TestCase):
                 "revision": "a" * 40, "method": "pytest",
                 "environment": "disposable", "observed": "pass", "result": "pass",
             })
-        self.assertIn("**NO BLOCKERS FOUND IN TESTED SCOPE**", render(self.data))
+        self.assertIn("**CONDITIONAL LAUNCH**", render(self.data))
+        # Self-asserted test logs are not authenticated independent release evidence.
         self.data["scope"]["revision"] = "b" * 40
         self.assertIn("**CONDITIONAL LAUNCH**", render(self.data))
         self.data["scope"]["revision"] = "a" * 40

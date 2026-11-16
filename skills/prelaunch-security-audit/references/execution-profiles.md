@@ -49,3 +49,7 @@ symlinks and traversal component by component, use regular-file descriptors,
 redact content before retention, and validate schemas and hashes. A content hash
 provides integrity comparison, not proof that a test ran. Unknown side effects,
 unauthorized destinations and unverifiable log provenance must fail closed.
+
+## v0.5.0 release-candidate restriction
+
+The bundled `IsolatedHostAdapter` currently refuses **all** target-code subprocess dispatch, even with a matching `HostAttestation`: process groups cannot guarantee detached descendant cleanup and macOS Seatbelt alone does not provide complete memory/disk/PID quotas. An eligible assessment is not an execution entitlement. Use `StaticHost` for source-only inspection, or deploy an independently reviewed external isolation supervisor as a separate host-owned capability. No legacy macOS positive-execution test can be counted while the adapter is disabled.

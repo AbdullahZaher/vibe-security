@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from execution_profiles import CONTROLS, HostAttestation, digest  # noqa: E402
 from runtime_host_adapter import (  # noqa: E402
     SANDBOX_EXEC,
+    RUNTIME_EXECUTION_ENABLED,
     ApprovalStore,
     ExecutionSpec,
     IsolatedHostAdapter,
@@ -36,10 +37,16 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.source_root = self.base / "src"
         self.source_root.mkdir()
         self.scratch_root = self.base / "scratch"
-        self.scratch_root.mkdir()
+        self.scratch_root.mkdir(mode=0o700)
         self.target = "synthetic-repo"
         self.revision = "a" * 40
-        get_default_approval_store().clear()
+        # Isolate approval state per test; never clear durable production history.
+        self._approval_store_patch = patch(
+            "runtime_host_adapter._DEFAULT_APPROVAL_STORE",
+            ApprovalStore(self.base / "default-approvals" / "approvals.json"),
+        )
+        self._approval_store_patch.start()
+        self.addCleanup(self._approval_store_patch.stop)
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -151,7 +158,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
     # R-01: Filesystem read exposure and boundary enforcement
     # -------------------------------------------------------------------------
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r01_host_secret_read_denied(self):
         """R-01: Child process cannot read synthetic secrets in neighboring directories."""
         secret_dir = self.base / "host_secrets"
@@ -183,7 +190,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         )
         self.assertNotIn("TOP_SECRET_SSH_KEY", res["stdout"])
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r01_cross_workspace_read_denied(self):
         """R-01: Child process cannot read neighboring workspace files."""
         other_ws = self.base / "other_workspace"
@@ -213,7 +220,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
             "PermissionError" in res["stderr"] or "Operation not permitted" in res["stderr"]
         )
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r01_symlink_escape_denied(self):
         """R-01: Symlinks inside scratch pointing to external secret cannot be followed."""
         secret_dir = self.base / "host_secrets"
@@ -252,7 +259,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         )
         self.assertNotIn("CLOUD_CREDENTIAL_DATA", res["stdout"])
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r01_authorized_source_read_and_scratch_write_allowed(self):
         """R-01: Reading authorized source and writing authorized scratch succeed cleanly."""
         source_file = self.source_root / "data.txt"
@@ -285,7 +292,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.assertEqual(res["exit_code"], 0)
         self.assertIn("SUCCESS_PROCESSED", res["stdout"])
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r01_write_to_source_denied(self):
         """R-01: Writing to source_root is strictly denied by the Seatbelt profile."""
         test_script = self.source_root / "evil_write.py"
@@ -371,7 +378,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.assertTrue(res["blocked"])
         self.assertFalse(res["occurred"])
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r02_replay_attack_rejected(self):
         """R-02: Replaying an already-dispatched approval is blocked."""
         adapter = IsolatedHostAdapter(
@@ -396,7 +403,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.assertFalse(res2["occurred"])
         self.assertIn("authorization replay rejected", res2["reason"])
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r02_execution_spec_telemetry_recorded(self):
         """R-02: Immutable ExecutionSpec and its digest are stored in telemetry events."""
         adapter = IsolatedHostAdapter(
@@ -464,7 +471,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.assertTrue(res["blocked"])
         self.assertFalse(res["occurred"])
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r03_seatbelt_profile_denies_network_connections(self):
         """R-03: Child process attempting socket connection is denied by Seatbelt."""
         with socket.socket() as listener:
@@ -505,7 +512,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
     # R-04: Bounded stream collection and process group cleanup
     # -------------------------------------------------------------------------
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r04_normal_output_bounded(self):
         """R-04: Normal output within limits is captured without truncation."""
         adapter = IsolatedHostAdapter(
@@ -529,7 +536,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.assertFalse(res["output_truncated"])
         self.assertFalse(res["timed_out"])
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r04_massive_stdout_truncated_and_terminated(self):
         """R-04: Massive output is bounded at max_bytes, terminates process group."""
         adapter = IsolatedHostAdapter(
@@ -553,7 +560,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         # Child process was terminated by SIGKILL (-9) or exit nonzero
         self.assertNotEqual(res["exit_code"], 0)
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r04_concurrent_stdout_stderr_bounded(self):
         """R-04: Concurrent massive stdout and stderr are both bounded."""
         adapter = IsolatedHostAdapter(
@@ -578,7 +585,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.assertLessEqual(len(res["stdout"].encode("utf-8")), 200)
         self.assertLessEqual(len(res["stderr"].encode("utf-8")), 200)
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r04_timeout_kills_process_group(self):
         """R-04: Child timing out is terminated via process group kill."""
         adapter = IsolatedHostAdapter(
@@ -601,7 +608,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.assertTrue(res["timed_out"])
         self.assertLess(elapsed, 5.0, "Timeout handler should have terminated child within ~1-2 seconds")
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r04_disposable_scratch_cleanup(self):
         """R-04: Disposable sub-scratch directory is removed cleanly after execution."""
         adapter = IsolatedHostAdapter(
@@ -626,7 +633,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
     # Additional trust boundary checks (Section 6)
     # -------------------------------------------------------------------------
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_credentials_and_user_site_scrubbed_from_environment(self):
         """Child process receives scrubbed environment and PYTHONNOUSERSITE=1."""
         adapter = IsolatedHostAdapter(
@@ -673,13 +680,13 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
             res = adapter.dispatch(req, cmd)
             self.assertTrue(res["blocked"])
             self.assertFalse(res["occurred"])
-            self.assertIn("host sandbox facility", res["reason"])
+            self.assertIn("external isolation supervisor" if not RUNTIME_EXECUTION_ENABLED else "host sandbox facility", res["reason"])
 
     # -------------------------------------------------------------------------
     # R-05: Genuine default-deny filesystem read isolation
     # -------------------------------------------------------------------------
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r05_default_deny_blocks_unallowlisted_paths(self):
         """R-05: Genuine default-deny blocks reads to unallowlisted host files (/etc/passwd, synthetic secrets)."""
         secret_file = self.base / "external_secret.txt"
@@ -738,7 +745,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
     # R-06: Complete process lifecycle cleanup & descendant termination
     # -------------------------------------------------------------------------
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r06_parent_exit_terminates_background_grandchild(self):
         """R-06: Grandchild process spawned by direct child is terminated when direct child exits."""
         script = self.source_root / "spawn_child.py"
@@ -775,7 +782,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
             alive = False
         self.assertFalse(alive, f"Descendant process {gpid} survived direct child exit!")
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r06_grandchild_closing_pipes_terminated(self):
         """R-06: Grandchild closing pipes is terminated cleanly without hanging."""
         script = self.source_root / "spawn_close.py"
@@ -816,7 +823,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
     # R-07: Strengthen authorization & telemetry integrity
     # -------------------------------------------------------------------------
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r07_cross_instance_replay_rejected(self):
         """R-07: Replaying an approval on a separate adapter instance is rejected."""
         cmd = [sys.executable, "-c", "print('run_once')"]
@@ -859,7 +866,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         store2 = ApprovalStore(store_path)
         self.assertFalse(store2.consume("req-1", "auth-1", "spec-hash-1"))
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_r07_telemetry_sanitizes_command_arguments(self):
         """R-07: Telemetry retains hashes and lengths, never sensitive raw command arguments."""
         secret_arg = "--api-secret-key=SUPER_SECRET_TOKEN_VALUE_XYZ"
@@ -927,10 +934,12 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.assertEqual(p2.returncode, 1)
 
     def test_a1_approval_store_corruption_fails_closed(self):
-        """A1: ApprovalStore safe corruption handling fails closed without allowing replay."""
+        """A1: corrupted disk approvals cannot be consumed, even outside dispatch."""
         store_path = self.base / "corrupt_approvals.json"
         store_path.write_text("{{INVALID_JSON_CORRUPT_BYTES", encoding="utf-8")
         store = ApprovalStore(store_path)
+        with self.assertRaises(ValueError):
+            store.consume("a1-req-1", "auth-1", "a" * 64)
 
         adapter = IsolatedHostAdapter(
             self.source_root, self.scratch_root,
@@ -948,7 +957,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         res = adapter.dispatch(req, cmd)
         self.assertTrue(res["blocked"])
         self.assertFalse(res["occurred"])
-        self.assertIn("approval store error", res["reason"])
+        self.assertIn("external isolation supervisor", res["reason"])
 
     def test_a1_approval_store_permissions_secure(self):
         """A1: ApprovalStore enforces 0o600 file permissions and 0o700 directory permissions."""
@@ -1050,7 +1059,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
         self.assertFalse(res["occurred"])
         self.assertIn("execution specification does not match", res["reason"])
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_a3_posix_process_group_cleanup_contained_descendants(self):
         """A3: Process group cleanup terminates multiple background worker processes."""
         script = self.source_root / "multi_workers.py"
@@ -1088,7 +1097,7 @@ class TestRuntimeHostAdapterHardening(unittest.TestCase):
             with self.assertRaises(OSError, msg=f"Worker PID {pid} survived cleanup!"):
                 os.kill(pid, 0)
 
-    @unittest.skipUnless(SANDBOX_EXEC.exists(), "Seatbelt (/usr/bin/sandbox-exec) required")
+    @unittest.skipUnless(SANDBOX_EXEC.exists() and RUNTIME_EXECUTION_ENABLED, "Legacy Seatbelt execution disabled; external isolation required")
     def test_a3_setsid_escape_limitation_documented(self):
         """A3: Documents technical limitation where grandchild calling setsid() escapes POSIX process group.
 

@@ -87,7 +87,8 @@
     },
     "C": {
       "treatment": "prelaunch-security-audit 0.5.0",
-      "source_revision": "feat/prelaunch-security-audit-v0.5.0-plan-20261114",
+      "source_revision": "0f2237887448686a8e2479e360a390c6abe2529c",
+      "remediation_revision": "e9a50054b1ba058998dcb2f47a69a27001d90ac5",
       "session_id": "31922005-cc62-49b8-96a7-bd56b5fbcbd1",
       "model": "Gemini 3.8 Flash (High)",
       "real_trials_completed": 1,

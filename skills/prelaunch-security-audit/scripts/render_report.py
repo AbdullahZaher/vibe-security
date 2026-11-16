@@ -231,9 +231,14 @@ def render(data: dict[str, Any], *, source_root=None, artifact_root=None,
                for row in rows)
     ):
         recommendation = "conditional launch"
+    # Report inputs and per-control logs are user/model-controlled JSON. No
+    # host-owned authentication of those legacy log records exists in this API.
+    # A self-consistent bundle must never render a positive release all-clear.
+    if recommendation == "no blockers found in tested scope":
+        recommendation = "conditional launch"
     result = [
         "# Prelaunch Security Review", "",
-        "> Evidence-based project review, not a security certification or penetration test.", "",
+        "> Structural consistency report only: supplied PASS logs are not authenticated host execution evidence.", "",
         "## Scope", "",
         f"- Project: {sanitized(scope.get('project', 'not specified'))}",
         f"- Revision: {sanitized(scope.get('revision', 'not specified'))}",
