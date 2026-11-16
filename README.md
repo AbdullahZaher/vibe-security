@@ -76,3 +76,8 @@ See [migration and usage](docs/v0.5.0-artifact-guide.md), the unchanged
 pending genuine independently adjudicated A/B/C trials and security maintainer
 review. Software tests establish implementation behavior, not improved recall or
 false-positive rates.
+
+
+## v0.5.0 independent release gate
+
+The working candidate is **not approved for stable release**. The proposed fail-closed runtime and approval-store remediation is in [draft PR #3](https://github.com/AbdullahZaher/vibe-security/pull/3). Historical self-reported A/B/C metrics and Linux CI success do not satisfy the immutable, 45-trial, host-attested and human-reviewed release requirements. See [the stable release blocker register](docs/security/v0.5.0-release-readiness-blockers.md).

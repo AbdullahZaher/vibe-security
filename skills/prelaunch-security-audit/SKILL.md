@@ -61,6 +61,17 @@ for launch. Prefer minimal, verifiable fixes over broad refactoring. Follow
 10. Do not install new scanners, fetch third-party rules, run remote exploit
     checks, or upload source data merely because the skill requests an audit.
 
+## Current v0.5 release-candidate runtime boundary
+
+The bundled `IsolatedHostAdapter` is **disabled for all untrusted subprocess execution**
+until an independently reviewed VM/microVM supervisor with enforceable CPU,
+memory, disk and process limits exists. It must not be interpreted as a
+certified Seatbelt sandbox. Continue with `static-only` review and log
+unexecuted tests as `not_run`. This capability restriction is deliberate
+fail-closed behavior, not a passing macOS runtime test. See
+[release blockers](../../docs/security/v0.5.0-release-readiness-blockers.md)
+from the repository root.
+
 ## Enforceable host boundaries vs advisory policy
 
 - Before each tool action, record its side-effect class and target; use
