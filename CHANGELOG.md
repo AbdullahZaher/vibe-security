@@ -1,9 +1,11 @@
 ## v0.5.0-rc1 — independent release assurance corrections (PR #3, not a stable release)
 
-- Correct GitHub Actions run `43756365960` totals: **286 tests, 254 passed, 32 skipped, 0 failed** in unit/contract; separate MCP integration passed and live model job skipped.
-- Correct recorded Git tree `cb9d7632361ed656c0bfe9bcb6ed09e4059e1283` for pre-correction commit `b8901c6860ca483d730cdeeb945025bb98792d45`; Skill subtree `3242bf0bf624641e49113cdd5ee9a8b837440726`.
-- Preserve original independent security finding IDs `IR-001`..`IR-015` in `docs/security/v0.5.0-original-findings-crosswalk.json`; earlier certificate reused IDs incorrectly.
-- Clarify that 3 pilot A/B/C agent sessions are **not 45 independently authenticated isolated trials**, and macOS matrix is developer-reported evidence, not independent human certification.
+- Verified GitHub Actions run `43760303379` totals: **299 tests, 267 passed, 32 skipped, 0 failed** in unit/contract on Linux (277 passed, 22 skipped on macOS); separate MCP integration passed and live model job skipped.
+- Verified candidate commit `cd83271a604ffeb5ed38cd403c7b82b289243fe1`; Git root tree `b3f29ccf15340b5a15e7c4c5d832d730e7ce40be`; Skill subtree `77585b64825659a5b2198c3701ea2e2aeeb1f53c`.
+- Enforced active GitHub branch protections on `main` and `feat/prelaunch-security-audit-v0.5.0-plan-20261114` (PR requirement, 1 human approval, dismiss stale, signed commits, linear history, status checks `unit-and-contract` and `mcp-stdio-integration`, enforce_admins). Created active tag ruleset 27351357 (`Protect Release Tags` targeting `refs/tags/v*`).
+- Re-executed macOS 10 negative security tests on macOS 15.7.3 arm64 at candidate commit `cd83271a604ffeb5ed38cd403c7b82b289243fe1`; 10/10 tests passed (100% pass rate).
+- Preserved original independent security finding IDs `IR-001`..`IR-015` with canonical classifications in `docs/security/v0.5.0-original-findings-crosswalk.json`.
+- Implemented zero-cost 45-slot trial readiness inventory in `evals/abc_trial_readiness.py`; 0/45 real trials authenticated; execution gate marked `BLOCKED_PENDING_AUTHORIZATION`.
 - Fix release rollback command syntax; prohibit removing the durable approval consumption ledger to revoke authorizations.
 - Stable remains **NO-GO**; no merge, tag or publication authorized.
 

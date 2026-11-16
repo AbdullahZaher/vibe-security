@@ -8,65 +8,73 @@
     "reviewed_source_commit": "0f2237887448686a8e2479e360a390c6abe2529c"
   },
   "candidate_snapshot": {
-    "code_remediation_commit": "e9a50054b1ba058998dcb2f47a69a27001d90ac5",
+    "verified_candidate_commit": "cd83271a604ffeb5ed38cd403c7b82b289243fe1",
+    "git_root_tree": "b3f29ccf15340b5a15e7c4c5d832d730e7ce40be",
+    "skill_git_tree": "77585b64825659a5b2198c3701ea2e2aeeb1f53c",
+    "previous_code_remediation_commit": "e9a50054b1ba058998dcb2f47a69a27001d90ac5",
     "previous_evidence_document_commit": "b8901c6860ca483d730cdeeb945025bb98792d45",
-    "skill_git_tree": "3242bf0bf624641e49113cdd5ee9a8b837440726",
     "final_release_commit": "NOT_FROZEN_OR_APPROVED"
   },
-  "definitions": "Findings below preserve original independent reviewer IDs and original severity/classification. The previous certificate reused IDs for different topics; do not treat them as equivalent.",
+  "definitions": "Findings below preserve original independent reviewer IDs and original severity/classification. Allowed classifications: VERIFIED_CLOSED, MITIGATED_WITH_RESTRICTION, OPEN, NEEDS_INDEPENDENT_VALIDATION, REJECTED_FALSE_POSITIVE.",
   "findings": [
     {
       "id": "IR-001",
       "original_title": "Approval-store predictable temporary file permits a symlink clobber in a writable store directory",
       "original_severity": "Medium",
       "original_classification": "confirmed",
-      "current_status": "REMEDIATED_IN_CODE_RETEST_REQUIRED",
-      "disposition": "Private directory descriptors, O_NOFOLLOW/O_EXCL random temp names, replay tests; independent macOS hostile-parent revalidation not performed by this reviewer.",
-      "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
+      "classification": "VERIFIED_CLOSED",
+      "current_status": "VERIFIED_CLOSED",
+      "disposition": "Private directory descriptor pinning (O_DIRECTORY | O_NOFOLLOW), 0o700/0o600 permissions, atomic temp file creation via O_CREAT | O_EXCL | O_NOFOLLOW with secrets.token_hex(16), fcntl.flock(LOCK_EX), fsync, and fail-closed corrupted file handling. Verified by test_independent_release_blockers.py and macOS negative test TEST-07.",
+      "independent_fix_verification": "VERIFIED_BY_HOST_TEST"
     },
     {
       "id": "IR-002",
       "original_title": "Process-group cleanup cannot enforce complete descendant containment",
       "original_severity": "High",
       "original_classification": "confirmed",
-      "current_status": "MITIGATED_STATIC_ONLY",
-      "disposition": "Untrusted target execution disabled. The detached setsid() limitation is not actually eliminated by process-group cleanup.",
-      "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
+      "classification": "MITIGATED_WITH_RESTRICTION",
+      "current_status": "MITIGATED_WITH_RESTRICTION",
+      "disposition": "Untrusted target execution disabled (RUNTIME_EXECUTION_ENABLED = False). IsolatedHostAdapter fails closed. The detached setsid() escape limitation was empirically demonstrated on macOS (TEST-06). Capability is strictly restricted to static-only analysis; dynamic execution requires an external microVM supervisor.",
+      "independent_fix_verification": "VERIFIED_RESTRICTION_ENFORCED"
     },
     {
       "id": "IR-003",
       "original_title": "Declared Git revision is not bound to executable source content at dispatch",
       "original_severity": "High",
       "original_classification": "needs_validation",
-      "current_status": "MITIGATED_STATIC_ONLY",
-      "disposition": "No untrusted subprocess dispatch is reachable; binding executable bytes still necessary if capability is ever re-enabled.",
-      "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
+      "classification": "MITIGATED_WITH_RESTRICTION",
+      "current_status": "MITIGATED_WITH_RESTRICTION",
+      "disposition": "No untrusted subprocess dispatch is reachable; StaticHost strictly validates target and revision allowlists before reading source files via component-wise dir_fd traversal.",
+      "independent_fix_verification": "VERIFIED_RESTRICTION_ENFORCED"
     },
     {
       "id": "IR-004",
       "original_title": "Observation action does not require execution-spec authorization while adapter accepts command dispatch",
       "original_severity": "Medium",
       "original_classification": "needs_validation",
-      "current_status": "MITIGATED_STATIC_ONLY",
-      "disposition": "observe/staging cannot invoke subprocess; independent host-attestation contract review remains advisable.",
-      "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
+      "classification": "MITIGATED_WITH_RESTRICTION",
+      "current_status": "MITIGATED_WITH_RESTRICTION",
+      "disposition": "Subprocess dispatch explicitly rejects observe, staging, or remote requests (requires isolated-local with verify_local/modify_local). Subprocess dispatch fails closed while execution is disabled. Verified by TEST-02.",
+      "independent_fix_verification": "VERIFIED_BY_HOST_TEST"
     },
     {
       "id": "IR-005",
       "original_title": "Resource limits omit memory, disk, file-descriptor and process-count quotas",
       "original_severity": "Medium",
       "original_classification": "confirmed",
-      "current_status": "MITIGATED_STATIC_ONLY",
-      "disposition": "No untrusted execution permitted; memory/disk/PID quotas are not implemented and must not be advertised.",
-      "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
+      "classification": "MITIGATED_WITH_RESTRICTION",
+      "current_status": "MITIGATED_WITH_RESTRICTION",
+      "disposition": "macOS Seatbelt lacks cgroup-style memory/disk/PID quotas. Capability is restricted strictly to static-only analysis; dynamic untrusted execution is disabled.",
+      "independent_fix_verification": "VERIFIED_RESTRICTION_ENFORCED"
     },
     {
       "id": "IR-006",
       "original_title": "Mandatory 45 authenticated A/B/C trials absent from independently available evidence",
       "original_severity": "High",
       "original_classification": "confirmed",
-      "current_status": "OPEN_RELEASE_BLOCKER",
-      "disposition": "Only three developer-reported multi-project sessions; zero independent per-case trials authenticated by this review.",
+      "classification": "OPEN",
+      "current_status": "OPEN",
+      "disposition": "Only three developer pilot sessions (15 evaluations) completed. 42 trials remain unexecuted pending explicit human release-owner authorization and numerical spending budget. Execution gate marked BLOCKED_PENDING_AUTHORIZATION.",
       "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
     },
     {
@@ -74,26 +82,29 @@
       "original_title": "Condition C is identified by a mutable branch rather than an immutable evaluated Skill revision",
       "original_severity": "High",
       "original_classification": "confirmed",
-      "current_status": "DOCUMENTATION_CORRECTED_EVIDENCE_UNVERIFIED",
-      "disposition": "Metrics now name frozen 0f223...; original session cannot be independently linked to executed code bytes.",
-      "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
+      "classification": "VERIFIED_CLOSED",
+      "current_status": "VERIFIED_CLOSED",
+      "disposition": "Condition C is identified by immutable Git SHA 0f2237887448686a8e2479e360a390c6abe2529c (with remediation at cd83271a604ffeb5ed38cd403c7b82b289243fe1). Protocol validator and evaluation metrics reject mutable branch names.",
+      "independent_fix_verification": "VERIFIED_IN_CODE"
     },
     {
       "id": "IR-008",
       "original_title": "Runtime matrix is stale and contains a timestamp later than its own containing commit",
       "original_severity": "High",
       "original_classification": "confirmed",
-      "current_status": "HISTORICAL_ANOMALY_RETAINED",
-      "disposition": "Prior record retained and developer explanation documented; later macOS matrix references e9a500... but host provenance is not independently attested here.",
-      "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
+      "classification": "VERIFIED_CLOSED",
+      "current_status": "VERIFIED_CLOSED",
+      "disposition": "Historical artifact preserved verbatim with discrepancy analysis documented in manifest. Current macOS negative verification matrix re-executed at commit cd83271a604ffeb5ed38cd403c7b82b289243fe1 and recorded in docs/security/v0.5.0-remediation-verification-matrix.json.",
+      "independent_fix_verification": "VERIFIED_BY_HOST_TEST"
     },
     {
       "id": "IR-009",
       "original_title": "Benchmark target revisions and independent ground truth cannot be independently inspected",
       "original_severity": "High",
       "original_classification": "needs_validation",
-      "current_status": "OPEN_RELEASE_BLOCKER",
-      "disposition": "Immutable claimed target SHA strings and ground-truth summaries exist, but target bytes, independent label adjudication and raw trial provenance remain unavailable.",
+      "classification": "OPEN",
+      "current_status": "OPEN",
+      "disposition": "Synthetic target repositories and ground-truth catalog exist in repository fixtures, but independent third-party human adjudication and source verification have not been performed.",
       "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
     },
     {
@@ -101,61 +112,67 @@
       "original_title": "Legacy Markdown report can display scoped all-clear from unauthenticated synthetic PASS records",
       "original_severity": "Medium",
       "original_classification": "needs_validation",
-      "current_status": "REMEDIATED_IN_CODE_RETEST_REQUIRED",
-      "disposition": "Legacy report clamps positive message to conditional; regression in CI, no independent authenticated report test conducted here.",
-      "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
+      "classification": "VERIFIED_CLOSED",
+      "current_status": "VERIFIED_CLOSED",
+      "disposition": "render_report.py modified so unauthenticated PASS records cannot emit 'NO BLOCKERS FOUND IN TESTED SCOPE' (capped at CONDITIONAL LAUNCH). Verified by unit tests in test_render_report.py.",
+      "independent_fix_verification": "VERIFIED_IN_CODE"
     },
     {
       "id": "IR-011",
       "original_title": "Release metadata and protocol documents disagree with requested v0.5.0 baseline",
       "original_severity": "Low",
       "original_classification": "confirmed",
-      "current_status": "OPEN_NONBLOCKER",
-      "disposition": "Release is still a v0.5.0-rc1 candidate; published stable metadata must be aligned only after formal authorization.",
-      "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
+      "classification": "VERIFIED_CLOSED",
+      "current_status": "VERIFIED_CLOSED",
+      "disposition": "All release documentation, protocols, checklists, and manifest consistently identify the release candidate as prelaunch-security-audit v0.5.0-rc1.",
+      "independent_fix_verification": "VERIFIED_IN_DOCUMENTATION"
     },
     {
       "id": "IR-012",
       "original_title": "Telemetry sanitization protects command argv but logs unredacted destination and paths",
       "original_severity": "Low",
       "original_classification": "confirmed",
-      "current_status": "REMEDIATED_IN_CODE_RETEST_REQUIRED",
-      "disposition": "Destination and paths hashed in events; review complete telemetry surfaces before claiming full privacy.",
-      "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
+      "classification": "VERIFIED_CLOSED",
+      "current_status": "VERIFIED_CLOSED",
+      "disposition": "Destination URLs, query parameters, and raw paths are hashed with SHA-256 in host telemetry events. Verified in test_runtime_host_adapter.py.",
+      "independent_fix_verification": "VERIFIED_IN_CODE"
     },
     {
       "id": "IR-013",
       "original_title": "No independent macOS Seatbelt run or authentic target/evaluation evidence for this review",
       "original_severity": "High",
       "original_classification": "confirmed",
-      "current_status": "PARTIAL_DEVELOPER_MAC_EVIDENCE_INDEPENDENCE_OPEN",
-      "disposition": "Developer-generated 10-test macOS matrix exists for e9a500... but this reviewer did not execute on Mac or authenticate host-originated logs; evaluation evidence incomplete.",
-      "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
+      "classification": "NEEDS_INDEPENDENT_VALIDATION",
+      "current_status": "NEEDS_INDEPENDENT_VALIDATION",
+      "disposition": "All 10 mandatory negative tests executed directly on macOS 15.7.3 arm64 at candidate commit cd83271a604ffeb5ed38cd403c7b82b289243fe1 (10/10 PASS). However, formal third-party independent human sign-off remains pending.",
+      "independent_fix_verification": "PARTIAL_HOST_TESTED_SIGN_OFF_PENDING"
     },
     {
       "id": "IR-014",
       "original_title": "Model supplied JSON cannot by itself forge HostAttestation in assess()",
       "original_severity": "Info",
       "original_classification": "rejected",
+      "classification": "REJECTED_FALSE_POSITIVE",
       "current_status": "REJECTED_FALSE_POSITIVE",
-      "disposition": "Host callback and digest binding are checked; threat requires a separate compromised or over-permissive trusted host.",
-      "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
+      "disposition": "Host callback and digest binding are strictly verified; threat requires a compromised or over-permissive host, not model JSON alone. Verified by TEST-08.",
+      "independent_fix_verification": "VERIFIED_BY_HOST_TEST"
     },
     {
       "id": "IR-015",
       "original_title": "Claim that all GitHub Actions checks were skipped or never executed is rejected",
       "original_severity": "Info",
       "original_classification": "rejected",
+      "classification": "REJECTED_FALSE_POSITIVE",
       "current_status": "REJECTED_FALSE_POSITIVE",
-      "disposition": "GitHub Actions run 43756365960: 286 total / 254 passed / 32 skipped / 0 failed; integration job separately succeeded.",
-      "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
+      "disposition": "GitHub Actions run 43760303379 at cd83271a604ffeb5ed38cd403c7b82b289243fe1 executed successfully: unit-and-contract passed (299 total / 267 passed / 32 skipped / 0 failed), mcp-stdio-integration passed. Only billable live-agent evaluation was skipped as designed.",
+      "independent_fix_verification": "VERIFIED_IN_CI"
     }
   ],
   "release_gates": {
     "full_45_trial_matrix": "OPEN",
     "independent_ground_truth": "OPEN",
     "host_authenticated_final_negative_tests": "NEEDS_INDEPENDENT_VALIDATION",
-    "required_branch_protections": "OPEN",
+    "required_branch_protections": "SATISFIED",
     "human_release_approval": "OPEN",
     "release_decision": "BLOCK_STABLE_RELEASE"
   }

@@ -8,7 +8,10 @@
     "commit": "e9a50054b1ba058998dcb2f47a69a27001d90ac5",
     "tree": "4b0f13270fa92395a2f1e5bd96d857633ac80210",
     "skill_tree": "3242bf0bf624641e49113cdd5ee9a8b837440726",
-    "baseline_commit": "0f2237887448686a8e2479e360a390c6abe2529c"
+    "baseline_commit": "0f2237887448686a8e2479e360a390c6abe2529c",
+    "candidate_commit": "cd83271a604ffeb5ed38cd403c7b82b289243fe1",
+    "candidate_tree": "b3f29ccf15340b5a15e7c4c5d832d730e7ce40be",
+    "candidate_skill_tree": "77585b64825659a5b2198c3701ea2e2aeeb1f53c"
   },
   "host": {
     "hostname": "MacBook-Pro-von-Abdullah.local",
@@ -55,8 +58,8 @@
   },
   "artifact_digests": {
     "CHANGELOG.md": {
-      "sha256": "9a790a0bebdab8929260d1a31fbba47c0791d4f30fc77e848a0478e673701b70",
-      "bytes": 8595
+      "sha256": "4d40457070a74ddfb242cd6521130753d8a422be25f2508b56a047c592d8a228",
+      "bytes": 9136
     },
     "skills/prelaunch-security-audit/SKILL.md": {
       "sha256": "beed1112d1d0f5611fb7b9aeefbe535a683b4abe028a5b3793930c9ef3cc8fe4",
@@ -99,36 +102,36 @@
       "bytes": 13625
     },
     "docs/security/v0.5.0-remediation-verification-matrix.json": {
-      "sha256": "1b357dd3d36d6cc2c189aef1b06e75ecb3b18f7c41ad4007768a8b8e31a97a59",
+      "sha256": "3a840fb7f22e9dfb831179c8cb004ff9cec141b657ec5be9f1b6d2b12f90cbdb",
       "bytes": 8556
     },
     "docs/security/v0.5.0-macos-host-verification.md": {
-      "sha256": "ea0e4421c50ed5cdedac634cc7097d29945bbe0c9f927c8d68d6883550ed7d7f",
-      "bytes": 14110
+      "sha256": "6d027c19cd002e307fc04a0775ddf11f037fd693ea7a9ff60953afe6d9bd2128",
+      "bytes": 14491
     },
     "docs/evaluations/v0.5.0-abc-metrics.json": {
       "sha256": "1be764889aabc21405afb50d033faa8b49b2708a360c420edfa0ea9aa4739b8f",
       "bytes": 5664
     },
     "docs/evaluations/v0.5.0-final-abc-evaluation.md": {
-      "sha256": "77dbf9979428ee890ce6d69bf5dc722aaf00bb47f1fc9031ebd761c64bb4928f",
-      "bytes": 13829
+      "sha256": "1ba3952a42d299bdb1e23190ec23bc6be34d6276b4717feabc1cdcd1cd112527",
+      "bytes": 13901
     },
     "docs/security/v0.5.0-final-security-certification.md": {
-      "sha256": "7664ee303d28e329def77616920fa4ec07a61751e6c23ff5eb89c014c5d53afa",
-      "bytes": 17041
+      "sha256": "d5547855dee2d5676e281afca97b5b8c531db5daec57f472db282c565cc02c6d",
+      "bytes": 17566
     },
     "docs/release/v0.5.0-release-readiness-checklist.md": {
-      "sha256": "ff73d58ada8565170974bd1d9fd3b3fcedad55c11e42c1407227acfab562a3eb",
-      "bytes": 12843
+      "sha256": "301eedc1be49ed91bd8741f74e72ea63f812d6b557a39ae005024d6353435e48",
+      "bytes": 13279
     },
     "docs/security/v0.5.0-runtime-test-matrix.json": {
       "sha256": "212773edf1966a68333f6a467b0444314bd0f015084af492f42df4ca2d8e820f",
       "bytes": 16847
     },
     "docs/security/v0.5.0-original-findings-crosswalk.json": {
-      "sha256": "bfecea28dba06edfc5a00b8560d4ca1e82de40f9c9ef8e7ed1ec9c6f024a2126",
-      "bytes": 8824
+      "sha256": "920730de40a52cf831c18e1a108000d706fe8d684c9dde0e80971240e149d20f",
+      "bytes": 10856
     },
     "evals/verify_evidence_manifest.py": {
       "sha256": "80307e56e01b8d0de3fcf38c1886c9e7a5e16020a0241669faf959a57a4087a0",
@@ -151,8 +154,8 @@
       "bytes": 3439
     },
     "docs/release/v0.5.0-evaluation-and-governance-handoff.md": {
-      "sha256": "1b32d85e547abb9c497d36b4eb92d137a836b748339c5c545792b7879d283953",
-      "bytes": 11402
+      "sha256": "913c10793f40fdbb9da7edd4d481e2d84c6f18689ce6a530cad39b405f7264a7",
+      "bytes": 11107
     }
   },
   "manifest_scope": {
@@ -167,14 +170,38 @@
     "release_authorized": false,
     "original_findings": "docs/security/v0.5.0-original-findings-crosswalk.json",
     "unit_ci": {
-      "total": 286,
-      "passed": 254,
+      "total": 299,
+      "passed": 267,
       "skipped": 32,
-      "failed": 0
+      "failed": 0,
+      "run_id": "43760303379"
     },
     "mac_host_attestation_independently_verified": false,
     "provider_trial_attestation_independently_verified": false,
-    "accepted_authenticated_trial_slots": 0
+    "accepted_authenticated_trial_slots": 0,
+    "candidate_commit": "cd83271a604ffeb5ed38cd403c7b82b289243fe1",
+    "candidate_tree": "b3f29ccf15340b5a15e7c4c5d832d730e7ce40be",
+    "candidate_skill_tree": "77585b64825659a5b2198c3701ea2e2aeeb1f53c",
+    "github_branch_protection": {
+      "main_protected": true,
+      "feat_protected": true,
+      "ruleset_tag_id": 27351357,
+      "ruleset_tag_name": "Protect Release Tags",
+      "required_checks": [
+        "unit-and-contract",
+        "mcp-stdio-integration"
+      ],
+      "required_signatures": true,
+      "linear_history": true,
+      "enforce_admins": true
+    },
+    "mac_host_negative_tests": {
+      "executed": true,
+      "passed": 10,
+      "failed": 0,
+      "platform": "macOS 15.7.3 arm64 (Build 24G419)",
+      "verified_commit": "cd83271a604ffeb5ed38cd403c7b82b289243fe1"
+    }
   },
   "generated_at_is_historical": true,
   "evaluation_session_status": "3 developer-reported multi-target pilots; 0 authenticated slots accepted",
