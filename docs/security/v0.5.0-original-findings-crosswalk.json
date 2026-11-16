@@ -13,9 +13,12 @@
     "skill_git_tree": "77585b64825659a5b2198c3701ea2e2aeeb1f53c",
     "previous_code_remediation_commit": "e9a50054b1ba058998dcb2f47a69a27001d90ac5",
     "previous_evidence_document_commit": "b8901c6860ca483d730cdeeb945025bb98792d45",
-    "final_release_commit": "NOT_FROZEN_OR_APPROVED"
+    "final_release_commit": "NOT_FROZEN_OR_APPROVED",
+    "previous_review_reference_commit": "c36ca6cf1836ab89239a7ede9b32dda5519d537d",
+    "previous_review_reference_root_tree": "de71b8fcd9c5c8f17e5b1005c8a89ba85a31c8b2",
+    "previous_review_reference_skill_tree": "77585b64825659a5b2198c3701ea2e2aeeb1f53c"
   },
-  "definitions": "Findings below preserve original independent reviewer IDs and original severity/classification. Allowed classifications: VERIFIED_CLOSED, MITIGATED_WITH_RESTRICTION, OPEN, NEEDS_INDEPENDENT_VALIDATION, REJECTED_FALSE_POSITIVE.",
+  "definitions": "Preserves independent original finding IDs. A developer-authored test report is not equivalent to independent release-grade attestation; accepted final closure requires exact-source verification with authentic evidence.",
   "findings": [
     {
       "id": "IR-001",
@@ -74,7 +77,7 @@
       "original_classification": "confirmed",
       "classification": "OPEN",
       "current_status": "OPEN",
-      "disposition": "Only three developer pilot sessions (15 evaluations) completed. 42 trials remain unexecuted pending explicit human release-owner authorization and numerical spending budget. Execution gate marked BLOCKED_PENDING_AUTHORIZATION.",
+      "disposition": "The five-case A/B/C protocol requires 45 unique host-authenticated case-arm-repetition trials. Three developer-reported multi-target pilot sessions are not individually validated and cannot be subtracted from the mandatory 45 slots. Accepted independent slots: 0/45. Numerical spending and human consent are pending.",
       "independent_fix_verification": "NOT_ATTESTED_FOR_RELEASE"
     },
     {
@@ -82,20 +85,20 @@
       "original_title": "Condition C is identified by a mutable branch rather than an immutable evaluated Skill revision",
       "original_severity": "High",
       "original_classification": "confirmed",
-      "classification": "VERIFIED_CLOSED",
-      "current_status": "VERIFIED_CLOSED",
-      "disposition": "Condition C is identified by immutable Git SHA 0f2237887448686a8e2479e360a390c6abe2529c (with remediation at cd83271a604ffeb5ed38cd403c7b82b289243fe1). Protocol validator and evaluation metrics reject mutable branch names.",
-      "independent_fix_verification": "VERIFIED_IN_CODE"
+      "classification": "NEEDS_INDEPENDENT_VALIDATION",
+      "current_status": "NEEDS_INDEPENDENT_VALIDATION",
+      "disposition": "Condition C metrics now contain immutable SHA strings, but neither the historical pilot provider trace nor the bytes actually loaded in the agent session have been authenticated. A remediation commit or current source tree does not retroactively bind the pilot to that source.",
+      "independent_fix_verification": "MODEL_SESSION_BYTES_NOT_INDEPENDENTLY_ATTESTED"
     },
     {
       "id": "IR-008",
       "original_title": "Runtime matrix is stale and contains a timestamp later than its own containing commit",
       "original_severity": "High",
       "original_classification": "confirmed",
-      "classification": "VERIFIED_CLOSED",
-      "current_status": "VERIFIED_CLOSED",
-      "disposition": "Historical artifact preserved verbatim with discrepancy analysis documented in manifest. Current macOS negative verification matrix re-executed at commit cd83271a604ffeb5ed38cd403c7b82b289243fe1 and recorded in docs/security/v0.5.0-remediation-verification-matrix.json.",
-      "independent_fix_verification": "VERIFIED_BY_HOST_TEST"
+      "classification": "NEEDS_INDEPENDENT_VALIDATION",
+      "current_status": "NEEDS_INDEPENDENT_VALIDATION",
+      "disposition": "The stale timestamp matrix has been preserved; timezone confusion is the developer's plausible explanation, not an independent cryptographic reconstruction. A new macOS matrix reports 10/10 PASS for prior candidate cd83271a...; signed independent host provenance and final release source review remain pending.",
+      "independent_fix_verification": "HISTORICAL_TIMESTAMP_CAUSE_NOT_AUTHENTICATED"
     },
     {
       "id": "IR-009",
@@ -144,7 +147,7 @@
       "original_classification": "confirmed",
       "classification": "NEEDS_INDEPENDENT_VALIDATION",
       "current_status": "NEEDS_INDEPENDENT_VALIDATION",
-      "disposition": "All 10 mandatory negative tests executed directly on macOS 15.7.3 arm64 at candidate commit cd83271a604ffeb5ed38cd403c7b82b289243fe1 (10/10 PASS). However, formal third-party independent human sign-off remains pending.",
+      "disposition": "Mac developer-host matrix reports 10/10 synthetic negative cases on cd83271a604ffeb5ed38cd403c7b82b289243fe1 (Skill tree 77585b64825659a5b2198c3701ea2e2aeeb1f53c). The code-bearing Skill tree is unchanged at reviewed parent c36ca6cf..., but host log provenance and evidence on the eventual release commit have not been independently signed or verified.",
       "independent_fix_verification": "PARTIAL_HOST_TESTED_SIGN_OFF_PENDING"
     },
     {
@@ -172,8 +175,10 @@
     "full_45_trial_matrix": "OPEN",
     "independent_ground_truth": "OPEN",
     "host_authenticated_final_negative_tests": "NEEDS_INDEPENDENT_VALIDATION",
-    "required_branch_protections": "SATISFIED",
+    "required_branch_protections": "PARTIAL_MAIN_AND_FEATURE_PROTECTED_DETAILS_UNVERIFIED",
     "human_release_approval": "OPEN",
-    "release_decision": "BLOCK_STABLE_RELEASE"
+    "release_decision": "BLOCK_STABLE_RELEASE",
+    "tag_creation_governance": "OPEN_RULESET_27351357_LACKS_CREATION",
+    "original_findings_verification": "IR-007_AND_IR-008_PENDING_INDEPENDENT_VALIDATION"
   }
 }
