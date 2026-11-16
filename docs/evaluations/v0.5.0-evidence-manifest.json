@@ -9,9 +9,9 @@
     "tree": "4b0f13270fa92395a2f1e5bd96d857633ac80210",
     "skill_tree": "3242bf0bf624641e49113cdd5ee9a8b837440726",
     "baseline_commit": "0f2237887448686a8e2479e360a390c6abe2529c",
-    "candidate_commit": "cd83271a604ffeb5ed38cd403c7b82b289243fe1",
-    "candidate_tree": "b3f29ccf15340b5a15e7c4c5d832d730e7ce40be",
-    "candidate_skill_tree": "77585b64825659a5b2198c3701ea2e2aeeb1f53c"
+    "candidate_commit": "b0b756c9f31ce1d0b5063ada1b459595770afbfc",
+    "candidate_tree": "9bac8bd2dceb8780ac2f5707342a8064f6ff7df9",
+    "candidate_skill_tree": "9bd01709e9e236e809e897f9b2c600f8ad75e6b7"
   },
   "host": {
     "hostname": "MacBook-Pro-von-Abdullah.local",
@@ -58,8 +58,8 @@
   },
   "artifact_digests": {
     "CHANGELOG.md": {
-      "sha256": "bd7f14fa9d484e6ad63dda6d5c6258996b0b191e99e9722b2e23b682f2811d44",
-      "bytes": 10877
+      "sha256": "27ffa8099d8c5015ee60f59c24ce54a82c7ec75bc04d1ae2cfaac0d63957a2d2",
+      "bytes": 12388
     },
     "skills/prelaunch-security-audit/SKILL.md": {
       "sha256": "beed1112d1d0f5611fb7b9aeefbe535a683b4abe028a5b3793930c9ef3cc8fe4",
@@ -102,11 +102,11 @@
       "bytes": 13625
     },
     "docs/security/v0.5.0-remediation-verification-matrix.json": {
-      "sha256": "3a840fb7f22e9dfb831179c8cb004ff9cec141b657ec5be9f1b6d2b12f90cbdb",
+      "sha256": "0effc1d6edf66c4a3f27fa927150c9bf5c6d647a291296d95e47f92fea055faa",
       "bytes": 8556
     },
     "docs/security/v0.5.0-macos-host-verification.md": {
-      "sha256": "6d027c19cd002e307fc04a0775ddf11f037fd693ea7a9ff60953afe6d9bd2128",
+      "sha256": "9cb6f453c8eb9ed0b8fe83ad4d8a3a798843c32c9a74556448d3a8c84acc274a",
       "bytes": 14491
     },
     "docs/evaluations/v0.5.0-abc-metrics.json": {
@@ -114,24 +114,24 @@
       "bytes": 5664
     },
     "docs/evaluations/v0.5.0-final-abc-evaluation.md": {
-      "sha256": "1ba3952a42d299bdb1e23190ec23bc6be34d6276b4717feabc1cdcd1cd112527",
-      "bytes": 13901
+      "sha256": "3f2a66618e4f2fe638f086c29c2f6f96960eb1a335767dc4db3da33b804dea8d",
+      "bytes": 13895
     },
     "docs/security/v0.5.0-final-security-certification.md": {
-      "sha256": "63733bd93b4c7bbe3c98a7bcc1a49f6c2664268aa3ce1c60847ca0598508125e",
-      "bytes": 18945
+      "sha256": "970d72322605cc899a2586c595f002293d27ed0b98a2fe55c0dc3fae2b0af4b7",
+      "bytes": 19239
     },
     "docs/release/v0.5.0-release-readiness-checklist.md": {
-      "sha256": "7010ad76d6312a519b9d4f6c341bd2b9de9b8a2e61e0540cfd8b30a19ddb3797",
-      "bytes": 13519
+      "sha256": "798d5a71f9f0533c9ae21f9745ebdaf0f8ab8353443d20f1ea14e3b4d258dae4",
+      "bytes": 13827
     },
     "docs/security/v0.5.0-runtime-test-matrix.json": {
       "sha256": "212773edf1966a68333f6a467b0444314bd0f015084af492f42df4ca2d8e820f",
       "bytes": 16847
     },
     "docs/security/v0.5.0-original-findings-crosswalk.json": {
-      "sha256": "d8cd3b26c016aac522cb8f64c25a12b6a43eca410cd5eea9da13ad1d2ee86932",
-      "bytes": 11737
+      "sha256": "b769fac58e4e29bb6940c0be13f379f56dc4aa3de888fd542f04c52f49ad1338",
+      "bytes": 11831
     },
     "evals/verify_evidence_manifest.py": {
       "sha256": "80307e56e01b8d0de3fcf38c1886c9e7a5e16020a0241669faf959a57a4087a0",
@@ -154,12 +154,12 @@
       "bytes": 3439
     },
     "docs/release/v0.5.0-evaluation-and-governance-handoff.md": {
-      "sha256": "cd5e0d4d515ba6addf71bd1ae781da6cb7acd3c0744a20d29f030d033fbc9c25",
-      "bytes": 11794
+      "sha256": "b9dc75350e59b9764e15c95d1574e997bc564a79bf418e3885b0eb025e41a0ab",
+      "bytes": 12398
     },
     "docs/release/v0.5.0-github-governance-remediation.md": {
-      "sha256": "d4ef72056642811648ca1d7abf73466ba0eff2d9d46dbb66f4fadaba27370cee",
-      "bytes": 5672
+      "sha256": "20e15be588d104d18f0fcaf83cfc60f4a48f53579aa515fa79194f702bd24788",
+      "bytes": 4766
     },
     "evals/verify_release_tag_ruleset.py": {
       "sha256": "ddd559069fa52129d4b65ee8a6a0cab7eab6086c727ab69f0c3b94979491f6f0",
@@ -182,38 +182,39 @@
     "release_authorized": false,
     "original_findings": "docs/security/v0.5.0-original-findings-crosswalk.json",
     "unit_ci": {
-      "total": 299,
-      "passed": 267,
+      "total": 308,
+      "passed": 276,
       "skipped": 32,
       "failed": 0,
-      "run_id": "43760303379"
+      "run_id": "43814434652"
     },
     "mac_host_attestation_independently_verified": false,
     "provider_trial_attestation_independently_verified": false,
     "accepted_authenticated_trial_slots": 0,
-    "candidate_commit": "cd83271a604ffeb5ed38cd403c7b82b289243fe1",
-    "candidate_tree": "b3f29ccf15340b5a15e7c4c5d832d730e7ce40be",
-    "candidate_skill_tree": "77585b64825659a5b2198c3701ea2e2aeeb1f53c",
+    "candidate_commit": "b0b756c9f31ce1d0b5063ada1b459595770afbfc",
+    "candidate_tree": "9bac8bd2dceb8780ac2f5707342a8064f6ff7df9",
+    "candidate_skill_tree": "9bd01709e9e236e809e897f9b2c600f8ad75e6b7",
     "github_branch_protection": {
       "main_protected": true,
       "feat_protected": true,
-      "ruleset_tag_id": 27351357,
-      "ruleset_tag_name": "Protect Release Tags",
-      "required_checks": null,
-      "required_signatures": null,
-      "linear_history": null,
-      "enforce_admins": null,
-      "required_checks_validation": "UNVERIFIED_BY_INDEPENDENT_REVIEW",
-      "detailed_protection_readback": "FORBIDDEN_403",
-      "tag_creation_rule_present": false,
-      "governance_gate": "PARTIAL"
+      "ruleset_tag_immutable_id": 27351357,
+      "ruleset_tag_creation_id": 27356441,
+      "ruleset_tag_creation_name": "Restrict Release Tag Creation",
+      "required_checks": [
+        "unit-and-contract",
+        "mcp-stdio-integration"
+      ],
+      "required_signatures": true,
+      "linear_history": true,
+      "enforce_admins": true,
+      "verified_via_live_api": true
     },
     "mac_host_negative_tests": {
       "executed": true,
       "passed": 10,
       "failed": 0,
       "platform": "macOS 15.7.3 arm64 (Build 24G419)",
-      "verified_commit": "cd83271a604ffeb5ed38cd403c7b82b289243fe1"
+      "verified_commit": "b0b756c9f31ce1d0b5063ada1b459595770afbfc"
     },
     "artifact_digest_count": 28,
     "stable_release_authorized": false

@@ -1,11 +1,11 @@
 {
   "schema": "v0.5.0-macos-negative-verification-v1",
-  "generated_at": "2026-11-16T05:22:29Z",
+  "generated_at": "2026-11-16T07:56:23Z",
   "git_info": {
-    "commit": "cd83271a604ffeb5ed38cd403c7b82b289243fe1",
-    "tree": "b3f29ccf15340b5a15e7c4c5d832d730e7ce40be",
+    "commit": "b0b756c9f31ce1d0b5063ada1b459595770afbfc",
+    "tree": "9bac8bd2dceb8780ac2f5707342a8064f6ff7df9",
     "branch": "fix/v050-independent-release-blockers-20261115",
-    "skill_tree": "77585b64825659a5b2198c3701ea2e2aeeb1f53c"
+    "skill_tree": "9bd01709e9e236e809e897f9b2c600f8ad75e6b7"
   },
   "host_metadata": {
     "hostname": "MacBook-Pro-von-Abdullah.local",
@@ -71,7 +71,7 @@
     {
       "test_id": "TEST-03-FILESYSTEM-SCOPE-ENFORCEMENT",
       "title": "Access to files outside authorized source root is blocked by StaticHost and Seatbelt",
-      "command": "/usr/bin/sandbox-exec -f /private/var/folders/b3/zdyljxhx61zf7qk0zrv5gt9h0000gn/T/v050-macos-verify-iw6r1841/test3.sb /bin/cat /private/var/folders/b3/zdyljxhx61zf7qk0zrv5gt9h0000gn/T/v050-macos-verify-iw6r1841/outside3/forbidden.txt",
+      "command": "/usr/bin/sandbox-exec -f /private/var/folders/b3/zdyljxhx61zf7qk0zrv5gt9h0000gn/T/v050-macos-verify-me17shfd/test3.sb /bin/cat /private/var/folders/b3/zdyljxhx61zf7qk0zrv5gt9h0000gn/T/v050-macos-verify-me17shfd/outside3/forbidden.txt",
       "expected": "StaticHost DENIED; Seatbelt non-zero returncode and Operation not permitted",
       "observed": {
         "static_host_result": {
@@ -82,15 +82,15 @@
         "forbidden_content_leaked": false
       },
       "exit_code": 1,
-      "stderr_sha256": "ac65e9dd2a6405364192b510fc043f5c0ab8e60855ecbfcc55d0f28975940820",
-      "wall_ms": 19,
+      "stderr_sha256": "4ff4b7e7b5aada926c6b326c1cada834304bec0f4b0871dae93f750bbaba045a",
+      "wall_ms": 20,
       "passed": true,
       "details": {}
     },
     {
       "test_id": "TEST-04-CREDENTIAL-AND-HOME-DENIAL",
       "title": "Credential files (/etc/passwd, master.passwd) and user home/ssh directory are denied",
-      "command": "/usr/bin/sandbox-exec -f /private/var/folders/b3/zdyljxhx61zf7qk0zrv5gt9h0000gn/T/v050-macos-verify-iw6r1841/test4.sb /bin/cat /etc/passwd",
+      "command": "/usr/bin/sandbox-exec -f /private/var/folders/b3/zdyljxhx61zf7qk0zrv5gt9h0000gn/T/v050-macos-verify-me17shfd/test4.sb /bin/cat /etc/passwd",
       "expected": "Seatbelt non-zero returncode and Operation not permitted",
       "observed": {
         "passwd_exit_code": 1,
@@ -115,8 +115,8 @@
         "operation_not_permitted": true
       },
       "exit_code": 1,
-      "stderr_sha256": "6bf991e4ec53ec57c4fade379b56bfc166928ac3c481e9566c5e075a2e85c0ae",
-      "wall_ms": 33,
+      "stderr_sha256": "e8dfd9fc42c9b860a373d3fc59e4a76c3e89b466ef67e61f27436e82683b9852",
+      "wall_ms": 31,
       "passed": true,
       "details": {}
     },
@@ -127,7 +127,7 @@
       "expected": "Grandchild process survives parent process group termination (demonstrating boundary)",
       "observed": {
         "setsid_escape_demonstrated": true,
-        "escaped_pid": 12200,
+        "escaped_pid": 53517,
         "implication": "Darwin Seatbelt and killpg cannot contain detached processes; untrusted execution must remain disabled"
       },
       "exit_code": null,
@@ -149,7 +149,7 @@
       },
       "exit_code": null,
       "stderr_sha256": null,
-      "wall_ms": 2,
+      "wall_ms": 1,
       "passed": true,
       "details": {}
     },

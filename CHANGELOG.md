@@ -1,3 +1,11 @@
+## v0.5.0-rc1 — P0 governance closure & verification (2026-11-16, PR #3)
+
+- **Creation-Only Release Tag Ruleset Enacted:** Created active tag ruleset `27356441` (`Restrict Release Tag Creation` targeting `refs/tags/v*`, rules: `creation`, bypass: named publisher `AbdullahZaher` User ID `29790195`), complementing existing immutable ruleset `27351357` (update & deletion blocked, zero bypass). Verified with `evals/verify_release_tag_ruleset.py` (0 blockers).
+- **Branch Protection Readback Verified:** Confirmed full effective protection on `main` and `feat/prelaunch-security-audit-v0.5.0-plan-20261114` via GitHub REST API (PR required, 1 human approval, dismiss stale, last push approval, conversation resolution, strict checks `unit-and-contract` + `mcp-stdio-integration`, linear history, signed commits, enforce_admins). Gate 9 marked `SATISFIED (ENFORCED & VERIFIED)`.
+- **CI Verified at Candidate Commit `b0b756c9...`:** GitHub Actions run [43814434652](https://github.com/AbdullahZaher/vibe-security/actions/runs/43814434652) passed 308 tests total (276 passed, 32 skipped on Linux; 286 passed, 22 skipped on macOS); MCP integration passed; release readiness gate exit 2 (`BLOCK_STABLE_RELEASE`).
+- **macOS Negative Verification Re-executed:** 10/10 tests passed on macOS 15.7.3 arm64 via `evals/macos_host_verifier.py`.
+- **Release Verdict Maintained as NO-GO:** PR #3 remains Draft. Stable release blocked pending 45-trial evaluation matrix authorization and formal human release-owner sign-off.
+
 ## v0.5.0-rc1 — independent blocker corrections (2026-11-16, PR #3)
 
 - Reopened original `IR-007` (unverified pilot source bytes) and `IR-008` (unauthenticated historical timestamp cause) as `NEEDS_INDEPENDENT_VALIDATION`; **no human release certification was issued**.
