@@ -1,3 +1,13 @@
+## v0.5.0-rc1 — independent blocker corrections (2026-11-16, PR #3)
+
+- Reopened original `IR-007` (unverified pilot source bytes) and `IR-008` (unauthenticated historical timestamp cause) as `NEEDS_INDEPENDENT_VALIDATION`; **no human release certification was issued**.
+- Verified prior HEAD `c36ca6cf1836ab89239a7ede9b32dda5519d537d`: root Git tree `de71b8fcd9c5c8f17e5b1005c8a89ba85a31c8b2` and Skill tree `77585b64825659a5b2198c3701ea2e2aeeb1f53c`. Corrected the external report's incorrect root tree `3430ee8c...`.
+- Reviewed live GitHub protections: `main` and feature branch are `protected: true`, but detailed protection GET returned 403. Active tag ruleset `27351357` denies update/deletion only. **Release-tag creation is not restricted** and Gate 9 is PARTIAL, not SATISFIED.
+- Added `evals/verify_release_tag_ruleset.py` and synthetic abuse tests, plus an exact administrator remediation handoff that preserves immutable tags while restricting new `v*` tag creation to a named publisher.
+- GitHub CI [43811050858](https://github.com/AbdullahZaher/vibe-security/actions/runs/43811050858) on previous HEAD passed 299 tests (267 pass, **32 skip**, 0 failed) in Linux unit job: 21 disabled legacy execution, 10 absent-cryptography evidence encryption tests, and 1 optional MCP SDK test. Separate MCP integration passed. The 10 evidence-encryption skips were **not** Darwin tests. CI must be rerun at final changed HEAD.
+- Mac developer report records 10/10 negative tests at earlier `cd83271a...` with unchanged Skill tree; independent signed host provenance and final release sign-off still pending.
+- 45 independently authenticated model trials remain unverified; budget and human release authorization still missing. **NO-GO**.
+
 ## v0.5.0-rc1 — independent release assurance corrections (PR #3, not a stable release)
 
 - Verified GitHub Actions run `43760303379` totals: **299 tests, 267 passed, 32 skipped, 0 failed** in unit/contract on Linux (277 passed, 22 skipped on macOS); separate MCP integration passed and live model job skipped.
@@ -15,7 +25,7 @@
 - **Durable Atomic ApprovalStore (IR-001):** Hardened single-use approval persistence against TOCTOU and symlinks using directory file descriptor pinning (`dir_fd`, `O_NOFOLLOW`), permissions `0o700`/`0o600`, cross-process `fcntl.flock(LOCK_EX)`, atomic replacement via `O_EXCL`, and fail-closed corruption detection. Prohibited unauthorized approval history resets (`clear()` raises `PermissionError`).
 - **Mandatory ExecutionSpec Binding (IR-004):** Enforced mandatory cryptographic binding of commands, targets, revisions, timeouts, and sanitized environment keys to `spec_sha256`. Rejected observe and staging requests from subprocess dispatch.
 - **Reporting Trust Boundary & Gate Enforcement (IR-010):** Enforced that unauthenticated JSON PASS logs cannot produce a positive "no blockers found in tested scope" all-clear in `render_report.py` (capped at "conditional launch"). Implemented `evals/release_readiness_gate.py` returning exit 2 (fail-closed) against developer claims.
-- **Telemetry & Evidence Privacy (IR-009):** Scrubbed cleartext query tokens, raw file paths, and command arguments from host events, retaining SHA256 digests and counts.
+- **Telemetry & Evidence Privacy (IR-012):** Scrubbed cleartext query tokens, raw file paths, and command arguments from host events, retaining SHA256 digests and counts.
 - **macOS Host Verification Suite:** Added `evals/macos_host_verifier.py` executing 10 mandatory negative security tests on macOS 15.7.3 arm64; all 10 tests passed (100% pass rate). Generated `docs/security/v0.5.0-macos-host-verification.md` and `docs/security/v0.5.0-remediation-verification-matrix.json`.
 - **Benchmark Integrity & Evidence Manifest:** Documented developer-reported Ground Truth audit for 5 target repositories (8 vulnerabilities, 12 negative controls, 20 entry points). Recorded a proposed explanation for the historical runtime matrix timestamp discrepancy and authored `docs/evaluations/v0.5.0-evidence-manifest.json` binding 18 historical artifacts (new corrected manifest will supersede this scope) with cryptographic digests.
 - **Definitive Release Decision: NO-GO:** Formally recorded `NO-GO` verdict in `docs/security/v0.5.0-final-security-certification.md` and `docs/release/v0.5.0-release-readiness-checklist.md`. Stable release remains blocked pending independent human maintainer approval and completion of the full 45-trial evaluation matrix.
